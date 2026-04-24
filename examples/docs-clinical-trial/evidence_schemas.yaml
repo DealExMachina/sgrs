@@ -1,0 +1,29 @@
+# Evidence Schemas for Clinical Trial
+schemas:
+  efficacy_analysis:
+    type: "object"
+    properties:
+      primary_endpoint: { type: "string" }
+      sample_size: { type: "integer", minimum: 50 }
+      p_value: { type: "number", minimum: 0, maximum: 1 }
+      hazard_ratio: { type: "number" }
+      confidence_interval: { type: "array", items: { type: "number" } }
+    required: ["primary_endpoint", "sample_size", "p_value"]
+
+  safety_report:
+    type: "object"
+    properties:
+      adverse_events_total: { type: "integer" }
+      serious_aes: { type: "integer" }
+      discontinuations: { type: "integer" }
+      deaths: { type: "integer" }
+      summary: { type: "string" }
+    required: ["adverse_events_total"]
+
+  irbapproval:
+    type: "object"
+    properties:
+      irb_name: { type: "string" }
+      approval_date: { type: "string", format: "date" }
+      protocol_version: { type: "string" }
+      expiration_date: { type: "string", format: "date" }

@@ -1,0 +1,15 @@
+# Solvency II Regulatory Governance
+scope:
+  id: "solvency2-2025"
+  name: "Solvency II Internal Model Validation"
+  description: "Insurance capital requirement assessment framework"
+
+dimensions:
+  claim_confidence: { name: "Model Validation", scale: [0, 1], initial: 0.5 }
+  contradiction_resolution: { name: "Regulator Acceptance", scale: [0, 1], initial: 0.35 }
+  goal_completion: { name: "Approval Progress", scale: [0, 1], initial: 0.3 }
+  risk_score_inverse: { name: "Capital Adequacy", scale: [0, 1], initial: 0.6 }
+
+policies:
+  finality_threshold: 0.85
+  monotonicity_window: 6

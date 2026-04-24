@@ -1,0 +1,11 @@
+# Finality Policy for Green Bond
+finality:
+  target_state: "resolved"
+  monotonicity: { enabled: true, window_rounds: 5 }
+  plateau: { ema_halflife: 2, threshold: 0.005 }
+  per_dimension:
+    claim_confidence: { min_rate: 0.02, max_rate: 0.3 }
+    contradiction_resolution: { min_rate: 0.015, max_rate: 0.25 }
+    goal_completion: { min_rate: 0.025, max_rate: 0.4 }
+    risk_score_inverse: { min_rate: 0.02, max_rate: 0.35 }
+  certification: { automatic_on_convergence: true }

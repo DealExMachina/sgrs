@@ -1,0 +1,30 @@
+# Evidence Schemas for Financial Services
+
+schemas:
+  regulatory_approval:
+    type: "object"
+    properties:
+      regulator: { type: "string" }
+      license_type: { type: "string" }
+      approval_date: { type: "string", format: "date" }
+      conditions: { type: "array", items: { type: "string" } }
+    required: ["regulator", "license_type", "approval_date"]
+
+  audit_report:
+    type: "object"
+    properties:
+      auditor: { type: "string" }
+      report_type: { type: "string", enum: ["financial", "compliance", "security"] }
+      year: { type: "integer" }
+      findings: { type: "array", items: { type: "string" } }
+      opinion: { type: "string", enum: ["unqualified", "qualified", "adverse"] }
+    required: ["auditor", "report_type", "opinion"]
+
+  aum_statement:
+    type: "object"
+    properties:
+      date: { type: "string", format: "date" }
+      assets_under_management: { type: "number", minimum: 0 }
+      currency: { type: "string" }
+      verified_by: { type: "string" }
+    required: ["date", "assets_under_management"]

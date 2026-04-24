@@ -1,0 +1,16 @@
+# Financial Services Platform Evaluation
+scope:
+  id: "fintech-assessment-2025"
+  name: "FinTech Platform Regulatory Review"
+  description: "API-first fintech compliance and risk assessment"
+  owner: "Regulatory Affairs"
+
+dimensions:
+  claim_confidence: { name: "Evidence Quality", scale: [0, 1], initial: 0.5 }
+  contradiction_resolution: { name: "Regulatory Alignment", scale: [0, 1], initial: 0.4 }
+  goal_completion: { name: "Compliance Progress", scale: [0, 1], initial: 0.3 }
+  risk_score_inverse: { name: "Risk Mitigation", scale: [0, 1], initial: 0.5 }
+
+policies:
+  finality_threshold: 0.8
+  monotonicity_window: 4

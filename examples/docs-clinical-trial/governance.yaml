@@ -1,0 +1,15 @@
+# Clinical Trial Evidence Governance
+scope:
+  id: "clinical-phase3-2025"
+  name: "Phase III Clinical Trial Safety Review"
+  description: "FDA regulatory assessment for new drug application"
+
+dimensions:
+  claim_confidence: { name: "Evidence Rigor", scale: [0, 1], initial: 0.5 }
+  contradiction_resolution: { name: "Regulator Alignment", scale: [0, 1], initial: 0.4 }
+  goal_completion: { name: "NDA Readiness", scale: [0, 1], initial: 0.35 }
+  risk_score_inverse: { name: "Safety Profile", scale: [0, 1], initial: 0.65 }
+
+policies:
+  finality_threshold: 0.9
+  monotonicity_window: 6

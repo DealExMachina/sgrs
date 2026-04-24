@@ -1,0 +1,11 @@
+# Finality Policy for Clinical Trial
+finality:
+  target_state: "resolved"
+  monotonicity: { enabled: true, window_rounds: 6 }
+  plateau: { ema_halflife: 3, threshold: 0.003 }
+  per_dimension:
+    claim_confidence: { min_rate: 0.015, max_rate: 0.25 }
+    contradiction_resolution: { min_rate: 0.01, max_rate: 0.2 }
+    goal_completion: { min_rate: 0.02, max_rate: 0.35 }
+    risk_score_inverse: { min_rate: 0.015, max_rate: 0.3 }
+  certification: { automatic_on_convergence: true }

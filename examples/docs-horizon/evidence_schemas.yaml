@@ -1,0 +1,98 @@
+# Evidence Schema Definitions for Project Horizon
+
+schemas:
+  financial_statement:
+    type: "object"
+    description: "Audited financial statements"
+    properties:
+      year:
+        type: "integer"
+        minimum: 2020
+      revenue:
+        type: "number"
+        minimum: 0
+      ebitda:
+        type: "number"
+      auditor:
+        type: "string"
+        enum: ["deloitte", "pwc", "ey", "kpmg"]
+      confidence_level:
+        type: "number"
+        minimum: 0
+        maximum: 1
+    required: ["year", "revenue", "auditor"]
+
+  due_diligence_report:
+    type: "object"
+    description: "DD findings from external counsel"
+    properties:
+      category:
+        type: "string"
+        enum: ["legal", "tax", "regulatory", "operational"]
+      finding:
+        type: "string"
+        maxLength: 500
+      severity:
+        type: "string"
+        enum: ["critical", "high", "medium", "low"]
+      source:
+        type: "string"  # Firm name
+      date:
+        type: "string"
+        format: "date"
+    required: ["category", "finding", "severity", "source"]
+
+  board_resolution:
+    type: "object"
+    description: "Board-approved decision"
+    properties:
+      date:
+        type: "string"
+        format: "date"
+      resolution_number:
+        type: "string"
+      title:
+        type: "string"
+      approved_by:
+        type: "array"
+        items:
+          type: "string"
+      votes_for:
+        type: "integer"
+      votes_against:
+        type: "integer"
+    required: ["date", "resolution_number", "title"]
+
+  market_intelligence:
+    type: "object"
+    description: "Third-party market research or competitor intel"
+    properties:
+      source:
+        type: "string"
+        enum: ["gartner", "forrester", "bloomberg", "reuters", "custom_analyst"]
+      metric:
+        type: "string"
+      value:
+        type: "number"
+      date:
+        type: "string"
+        format: "date"
+      confidence:
+        type: "number"
+        minimum: 0
+        maximum: 1
+    required: ["source", "metric", "value"]
+
+# Mapping of claim types to acceptable evidence schemas
+claim_evidence_mapping:
+  "revenue_stability":
+    acceptable_schemas:
+      - "financial_statement"
+      - "market_intelligence"
+  "regulatory_compliance":
+    acceptable_schemas:
+      - "due_diligence_report"
+      - "board_resolution"
+  "management_strength":
+    acceptable_schemas:
+      - "board_resolution"

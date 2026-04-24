@@ -1,0 +1,30 @@
+# Evidence Schemas for Green Bond
+schemas:
+  impact_assessment:
+    type: "object"
+    properties:
+      project_id: { type: "string" }
+      impact_area: { type: "string", enum: ["climate", "biodiversity", "energy", "water"] }
+      baseline: { type: "number" }
+      target: { type: "number" }
+      unit: { type: "string" }
+      timeline: { type: "string" }
+    required: ["project_id", "impact_area", "baseline"]
+
+  third_party_verification:
+    type: "object"
+    properties:
+      verifier: { type: "string" }
+      standard: { type: "string", enum: ["icma-gbp", "un-sdg", "climate-bonds"] }
+      date: { type: "string", format: "date" }
+      opinion: { type: "string" }
+      score: { type: "number", minimum: 0, maximum: 100 }
+    required: ["verifier", "standard", "opinion"]
+
+  allocation_report:
+    type: "object"
+    properties:
+      period: { type: "string", format: "date" }
+      proceeds_allocated: { type: "number" }
+      projects_funded: { type: "integer" }
+      summary: { type: "string" }

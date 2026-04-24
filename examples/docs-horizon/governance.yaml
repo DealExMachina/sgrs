@@ -1,0 +1,53 @@
+# Project Horizon M&A Governance
+# Cross-border acquisition evaluation framework
+
+scope:
+  id: "horizon-ma-2025"
+  name: "Project Horizon: TechCorp Acquisition"
+  description: "Strategic M&A assessment with 21 key claims"
+  owner: "Deal Strategy Team"
+
+dimensions:
+  claim_confidence:
+    name: "Claim Confidence"
+    description: "Evidence quality and corroboration level"
+    scale: [0, 1]
+    initial: 0.5
+
+  contradiction_resolution:
+    name: "Contradiction Resolution"
+    description: "Agreement among independent sources"
+    scale: [0, 1]
+    initial: 0.3
+
+  goal_completion:
+    name: "Goal Completion"
+    description: "Progress toward transaction milestone"
+    scale: [0, 1]
+    initial: 0.4
+
+  risk_score_inverse:
+    name: "Risk Score (Inverse)"
+    description: "1 - normalized risk magnitude"
+    scale: [0, 1]
+    initial: 0.6
+
+policies:
+  finality_threshold: 0.85
+  monotonicity_window: 5
+  plateau_ema_halflife: 2
+  convergence_rate_threshold: 0.02
+
+roles:
+  - id: "extractor"
+    agents: [1]
+    permissions: ["create_claim", "cite_evidence"]
+  - id: "comparator"
+    agents: [2]
+    permissions: ["assess_alignment", "flag_contradiction"]
+  - id: "arbiter"
+    agents: [3]
+    permissions: ["propose_resolution", "veto"]
+  - id: "reviewer"
+    agents: [4]
+    permissions: ["audit_finality", "sign_certificate"]

@@ -1,0 +1,15 @@
+# Green Bond Issuance Governance
+scope:
+  id: "green-bond-2025"
+  name: "EUR 500M Green Bond Framework Validation"
+  description: "ESG impact measurement and third-party verification"
+
+dimensions:
+  claim_confidence: { name: "Impact Data Quality", scale: [0, 1], initial: 0.5 }
+  contradiction_resolution: { name: "ESG Alignment", scale: [0, 1], initial: 0.45 }
+  goal_completion: { name: "Issuance Readiness", scale: [0, 1], initial: 0.4 }
+  risk_score_inverse: { name: "Greenwashing Risk", scale: [0, 1], initial: 0.6 }
+
+policies:
+  finality_threshold: 0.88
+  monotonicity_window: 5

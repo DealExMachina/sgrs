@@ -1,0 +1,29 @@
+# Evidence Schemas for Insurance Underwriting
+schemas:
+  actuarial_study:
+    type: "object"
+    properties:
+      study_id: { type: "string" }
+      cohort_size: { type: "integer", minimum: 100 }
+      loss_ratio: { type: "number", minimum: 0, maximum: 1 }
+      confidence_interval: { type: "number" }
+      actuaries: { type: "array", items: { type: "string" } }
+    required: ["study_id", "cohort_size", "loss_ratio"]
+
+  claim_history:
+    type: "object"
+    properties:
+      period: { type: "string" }
+      total_claims: { type: "integer" }
+      frequency: { type: "number" }
+      severity: { type: "number" }
+      source: { type: "string" }
+    required: ["period", "total_claims"]
+
+  pricing_model:
+    type: "object"
+    properties:
+      model_version: { type: "string" }
+      baseline_premium: { type: "number", minimum: 0 }
+      risk_factors: { type: "array" }
+      validated: { type: "boolean" }

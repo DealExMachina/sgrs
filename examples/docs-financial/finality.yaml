@@ -1,0 +1,18 @@
+# Finality Policy for Financial Services Compliance
+
+finality:
+  target_state: "resolved"
+  monotonicity:
+    enabled: true
+    window_rounds: 4
+  plateau:
+    ema_halflife: 2
+    threshold: 0.005
+    min_rounds_on_plateau: 3
+  per_dimension:
+    claim_confidence: { min_rate: 0.02, max_rate: 0.3 }
+    contradiction_resolution: { min_rate: 0.02, max_rate: 0.25 }
+    goal_completion: { min_rate: 0.03, max_rate: 0.4 }
+    risk_score_inverse: { min_rate: 0.02, max_rate: 0.35 }
+  certification:
+    automatic_on_convergence: true

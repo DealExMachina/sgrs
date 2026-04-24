@@ -1,0 +1,15 @@
+# Insurance Product Launch Governance
+scope:
+  id: "insurance-launch-2025"
+  name: "Cyber Insurance Product Line Review"
+  description: "Underwriting framework and actuarial validation"
+
+dimensions:
+  claim_confidence: { name: "Data Quality", scale: [0, 1], initial: 0.5 }
+  contradiction_resolution: { name: "Underwriting Alignment", scale: [0, 1], initial: 0.4 }
+  goal_completion: { name: "Launch Readiness", scale: [0, 1], initial: 0.35 }
+  risk_score_inverse: { name: "Risk Appetite", scale: [0, 1], initial: 0.55 }
+
+policies:
+  finality_threshold: 0.82
+  monotonicity_window: 4

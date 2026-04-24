@@ -1,0 +1,28 @@
+# Evidence Schemas for Solvency II
+schemas:
+  stress_test_result:
+    type: "object"
+    properties:
+      scenario: { type: "string", enum: ["interest_rate", "equity", "spread", "concentration"] }
+      initial_scr: { type: "number", minimum: 0 }
+      stressed_scr: { type: "number", minimum: 0 }
+      coverage_ratio: { type: "number" }
+      year: { type: "integer" }
+    required: ["scenario", "initial_scr", "stressed_scr"]
+
+  actuary_report:
+    type: "object"
+    properties:
+      qualified_actuary: { type: "string" }
+      report_date: { type: "string", format: "date" }
+      opinion: { type: "string" }
+      key_assumptions: { type: "array", items: { type: "string" } }
+    required: ["qualified_actuary", "opinion"]
+
+  capital_management_plan:
+    type: "object"
+    properties:
+      plan_id: { type: "string" }
+      target_ratio: { type: "number" }
+      contingency_actions: { type: "array" }
+      review_date: { type: "string", format: "date" }

@@ -1,0 +1,82 @@
+name: Release (Python/PyPI)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".changeset/**"
+      - "packages/client-py/**"
+      - "pnpm-lock.yaml"
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: 20.18.0
+  PNPM_VERSION: 9.15.0
+
+jobs:
+  release:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - run: pnpm install --frozen-lockfile
+
+      # Verify build and tests pass
+      - run: pnpm build
+      - run: pnpm typecheck
+
+      # Check for changesets
+      - run: pnpm changeset status --since=origin/main || echo "No changesets"
+
+      # Build Python package from source
+      - name: Build Python package
+        run: |
+          pip install build hatch
+          cd packages/client-py
+          python -m build
+
+      # Publish to PyPI using trusted publisher (OIDC)
+      # This requires PyPI project to have GitHub as trusted publisher configured
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/client-py/dist
+          # Uses OIDC token from GitHub Actions
+          attestations: true
+
+      # Sign artifacts with cosign
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign Python distributions
+        run: |
+          cd packages/client-py/dist
+          for f in *.whl *.tar.gz; do
+            cosign sign-blob --yes "$f" > "$f.sig"
+          done
+        # Note: Requires cosign private key or OIDC keyless signing
+
+      # Create git tag
+      - run: git tag -a release-py-$(date +%Y%m%d-%H%M%S) -m "PyPI release"
+      - run: git push origin main --tags
+        if: success()

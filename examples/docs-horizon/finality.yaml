@@ -1,0 +1,49 @@
+# Finality Convergence Policy for Project Horizon
+
+finality:
+  # Target state after which no further evidence changes claim valuations
+  target_state: "resolved"
+
+  # Monotonicity tracking: V(t) must only increase in finality score
+  monotonicity:
+    enabled: true
+    window_rounds: 5
+    tolerance: 0.01  # Allow 1% jitter
+
+  # EMA-based plateau detection
+  plateau:
+    ema_halflife: 2  # 2-round exponential moving average
+    threshold: 0.005  # Plateau declared if |ema_diff| < 0.5%
+    min_rounds_on_plateau: 3
+
+  # Per-dimension convergence rates
+  per_dimension:
+    claim_confidence:
+      min_rate: 0.02      # At least 2% improvement per round
+      max_rate: 0.3       # Cap at 30% per round (prevents wild swings)
+    contradiction_resolution:
+      min_rate: 0.01
+      max_rate: 0.25
+    goal_completion:
+      min_rate: 0.03
+      max_rate: 0.4
+    risk_score_inverse:
+      min_rate: 0.015
+      max_rate: 0.35
+
+  # Certificate issuance triggers
+  certification:
+    automatic_on_convergence: true
+    policy_hash_algorithm: "sha256"
+    signature_scheme: "ed25519"
+
+  # Veto conditions
+  veto:
+    triggers:
+      - condition: "unresolved_contradiction"
+        description: "More than 2 claims in active contradiction"
+      - condition: "stale_evidence"
+        description: "No new evidence for 10+ rounds"
+      - condition: "goal_regression"
+        description: "Goal completion drops below 0.3"
+    active_duration: 3  # Rounds during which veto is enforced
