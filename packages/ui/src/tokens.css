@@ -1,0 +1,62 @@
+/**
+ * SGRS Studio — Deal ex Machina design tokens.
+ *
+ * Palette: black / orange / amber / gray / blue in soft tones.
+ * All accents are desaturated ~15% from primary to keep long-session comfort.
+ */
+:root {
+  /* Ink scale */
+  --dxm-ink: #0b0c0f;
+  --dxm-ink-soft: #12141a;
+  --dxm-ink-raised: #191c23;
+  --dxm-graphite: #262a33;
+  --dxm-graphite-2: #363b47;
+
+  /* Fog / Mist / Paper (text) */
+  --dxm-fog: #7a7f8b;
+  --dxm-fog-2: #9aa0ac;
+  --dxm-mist: #c9cdd6;
+  --dxm-paper: #e8ebf1;
+
+  /* Accent — primary (orange family) */
+  --dxm-orange: #ff7a1a;
+  --dxm-orange-soft: #f59e5e;
+
+  /* Accent — warm (amber family, HITL / warn) */
+  --dxm-amber: #e8b765;
+  --dxm-amber-soft: #f0ce94;
+
+  /* Accent — cool (blue family, info / consensus) */
+  --dxm-blue: #6aa6d6;
+  --dxm-blue-deep: #3e6b93;
+
+  /* Semantic states (desaturated) */
+  --dxm-ok: #7fb98b;
+  --dxm-warn: var(--dxm-amber);
+  --dxm-risk: #d97a6c;
+  --dxm-unknown: var(--dxm-fog);
+
+  /* Shape / motion */
+  --dxm-r: 12px;
+  --dxm-r-sm: 8px;
+  --dxm-r-lg: 16px;
+  --dxm-t-smooth: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --dxm-t-fast: 140ms ease-out;
+}
+
+/* Subtle grain — opt-in via .dxm-grain on <body> */
+.dxm-grain {
+  position: relative;
+}
+.dxm-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px
+  );
+  background-size: 3px 3px;
+}

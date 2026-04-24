@@ -1,0 +1,63 @@
+@import "@sgrs/ui/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--dxm-ink);
+  color: var(--dxm-mist);
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px
+  );
+  background-size: 3px 3px;
+  z-index: 1;
+}
+
+.font-mono,
+.mono {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dxm-graphite);
+  border-radius: 3px;
+}
+
+/* Keyframes */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(232, 183, 101, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(232, 183, 101, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 183, 101, 0);
+  }
+}
+.dxm-pulse {
+  animation: pulse-ring 2.8s ease-out infinite;
+}
