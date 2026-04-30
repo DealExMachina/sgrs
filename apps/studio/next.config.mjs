@@ -2,8 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@sgrs/ui", "@sgrs/graph"],
+  transpilePackages: ["@sgrs/ui", "@sgrs/graph", "@sgrs/client-ts"],
   typedRoutes: true,
+  turbopack: {
+    root: "../../",
+  },
 };
 
 export default nextConfig;

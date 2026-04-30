@@ -2,20 +2,46 @@
 
 import { Graph } from "../Graph";
 import { horizonScenario } from "@/lib/mock-data";
-import type { ScopeSummary } from "@/lib/mock-data";
+import type { ScopeItem } from "@/lib/types";
+import type { ApiFinalityStatus } from "@/lib/hooks/useFinality";
 import { cn } from "@sgrs/ui";
 
-export function DebugMode({ scope: _scope }: { scope: ScopeSummary }) {
+interface Props {
+  scope: ScopeItem;
+  /** Finality status lifted from Shell — driven by SSE or poll. */
+  finalityStatus: ApiFinalityStatus | null;
+  finalityLoading: boolean;
+}
+
+export function DebugMode({ scope, finalityStatus: status, finalityLoading: isLoading }: Props) {
+
+  // Fall back to scope-level score when no detailed finality record exists yet
+  const score = status?.score ?? scope.score;
+  const rate = status?.convergence_rate ?? null;
+  const monotonicity = status?.monotonicity_rounds ?? null;
+  const plateauEma = status?.plateau_ema ?? null;
+  const perDim = status?.per_dimension ?? {};
+  const vetoActive = status?.veto_active ?? false;
+
   return (
     <div className="grid h-full grid-cols-[1fr_340px] grid-rows-[1fr_220px] gap-3 p-3">
       <Graph data={horizonScenario} className="col-start-1 row-start-1" />
 
       <div className="col-start-2 row-span-2 flex min-h-0 flex-col gap-3 overflow-y-auto">
         <DbgCard title="Convergence · V(t)">
-          <Kv k="score" v="0.78" />
-          <Kv k="rate α" v="−0.11" trend />
-          <Kv k="monotonicity" v="2 / 3" />
-          <Kv k="plateau EMA" v="0.04" />
+          <Kv k="score" v={score.toFixed(3)} />
+          {rate !== null && (
+            <Kv k="rate α" v={`${rate >= 0 ? "+" : ""}${rate.toFixed(3)}`} trend={rate < 0} />
+          )}
+          {monotonicity !== null && (
+            <Kv k="monotonicity" v={String(monotonicity)} />
+          )}
+          {plateauEma !== null && (
+            <Kv k="plateau EMA" v={plateauEma.toFixed(3)} />
+          )}
+          {isLoading && (
+            <div className="mt-1 text-[10.5px] text-fog">refreshing…</div>
+          )}
           <svg
             viewBox="0 0 240 42"
             preserveAspectRatio="none"
@@ -31,10 +57,32 @@ export function DebugMode({ scope: _scope }: { scope: ScopeSummary }) {
         </DbgCard>
 
         <DbgCard title="Per-dimension finality">
-          <DimBar label="claim_confidence" v={0.88} tone="ok" />
-          <DimBar label="contradiction_resolution" v={0.62} tone="risk" veto />
-          <DimBar label="goal_completion" v={0.79} />
-          <DimBar label="risk_score_inverse" v={0.71} tone="warn" />
+          {Object.keys(perDim).length > 0 ? (
+            Object.entries(perDim).map(([dim, v]) => (
+              <DimBar
+                key={dim}
+                label={dim}
+                v={v as number}
+                tone={
+                  (v as number) >= 0.85
+                    ? "ok"
+                    : (v as number) < 0.5
+                      ? "risk"
+                      : (v as number) < 0.7
+                        ? "warn"
+                        : undefined
+                }
+                veto={vetoActive && (v as number) < 0.5}
+              />
+            ))
+          ) : (
+            <>
+              <DimBar label="claim_confidence" v={0.88} tone="ok" />
+              <DimBar label="contradiction_resolution" v={0.62} tone="risk" veto />
+              <DimBar label="goal_completion" v={0.79} />
+              <DimBar label="risk_score_inverse" v={0.71} tone="warn" />
+            </>
+          )}
         </DbgCard>
 
         <DbgCard title="Governance trace · last 5">

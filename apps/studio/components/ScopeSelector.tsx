@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@sgrs/ui";
-import type { ScopeSummary } from "@/lib/mock-data";
+import type { ScopeItem } from "@/lib/types";
 
 interface Props {
-  scopes: ScopeSummary[];
+  scopes: ScopeItem[];
   activeId: string;
   onSelect: (id: string) => void;
 }
@@ -13,7 +13,7 @@ interface Props {
 export function ScopeSelector({ scopes, activeId, onSelect }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
-  const active = scopes.find((s) => s.id === activeId)!;
+  const active = scopes.find((s) => s.id === activeId) ?? scopes[0]!;
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -23,7 +23,7 @@ export function ScopeSelector({ scopes, activeId, onSelect }: Props) {
     return () => document.removeEventListener("click", onDoc);
   }, []);
 
-  const groups: [string, ScopeSummary[]][] = [
+  const groups: [string, ScopeItem[]][] = [
     ["Active", scopes.filter((s) => s.state !== "archived")],
     ["Archived", scopes.filter((s) => s.state === "archived")],
   ];
@@ -83,11 +83,9 @@ export function ScopeSelector({ scopes, activeId, onSelect }: Props) {
                         >
                           {stateLabel(s)}
                         </div>
-                        {s.note && (
-                          <div className="col-span-2 text-[11px] text-fog">
-                            {s.tag} · {s.note}
-                          </div>
-                        )}
+                        <div className="col-span-2 text-[11px] text-fog">
+                          {s.tag} · {s.cycles} cycles
+                        </div>
                       </button>
                     );
                   })}
@@ -103,27 +101,32 @@ export function ScopeSelector({ scopes, activeId, onSelect }: Props) {
   );
 }
 
-function stateColor(state: ScopeSummary["state"]) {
-  return state === "resolved"
-    ? "bg-ok"
-    : state === "active"
-      ? "bg-blue"
-      : state === "near-final"
-        ? "bg-ok"
-        : "bg-fog";
+function stateColor(state: ScopeItem["state"]) {
+  switch (state) {
+    case "resolved":   return "bg-ok";
+    case "active":     return "bg-blue";
+    case "near-final": return "bg-ok";
+    case "escalated":  return "bg-risk";
+    default:           return "bg-fog";
+  }
 }
 
-function stateTextColor(state: ScopeSummary["state"]) {
-  return state === "resolved"
-    ? "text-ok"
-    : state === "active"
-      ? "text-blue"
-      : "text-fog";
+function stateTextColor(state: ScopeItem["state"]) {
+  switch (state) {
+    case "resolved":   return "text-ok";
+    case "active":     return "text-blue";
+    case "near-final": return "text-ok";
+    case "escalated":  return "text-risk";
+    default:           return "text-fog";
+  }
 }
 
-function stateLabel(s: ScopeSummary) {
-  if (s.state === "resolved") return "resolved ✓";
-  if (s.state === "active") return `active ${s.score.toFixed(2)}`;
-  if (s.state === "near-final") return `near-final ${s.score.toFixed(2)}`;
-  return "archived";
+function stateLabel(s: ScopeItem) {
+  switch (s.state) {
+    case "resolved":   return "resolved ✓";
+    case "near-final": return `near-final ${s.score.toFixed(2)}`;
+    case "escalated":  return `escalated ${s.score.toFixed(2)}`;
+    case "active":     return `active ${s.score.toFixed(2)}`;
+    default:           return "archived";
+  }
 }

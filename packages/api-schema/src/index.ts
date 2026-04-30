@@ -118,5 +118,158 @@ export const FinalityCertificate = z.object({
 });
 export type FinalityCertificate = z.infer<typeof FinalityCertificate>;
 
+// ─── Governance domain — Claims ───────────────────────────────────────────────
+
+export const Claim = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  /** Human-readable assertion extracted by the swarm. */
+  text: z.string().min(1).max(2000),
+  /** Source document name or agent identifier that produced this claim. */
+  source: z.string().max(200),
+  /** Which finality dimension this claim primarily informs. */
+  dimension: FinalityDimension.optional(),
+  /** Confidence score 0–1 assigned by the extraction agent. */
+  confidence: z.number().min(0).max(1),
+  /** Convergence round in which the claim was extracted. */
+  round: z.number().int().nonnegative(),
+  created_at: z.string().datetime(),
+});
+export type Claim = z.infer<typeof Claim>;
+
+// ─── Governance domain — Drifts ───────────────────────────────────────────────
+
+export const DriftSeverity = z.enum(["low", "medium", "high"]);
+export type DriftSeverity = z.infer<typeof DriftSeverity>;
+
+export const Drift = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  /** ID of the claim that changed, if applicable. */
+  claim_id: z.string().uuid().optional(),
+  /** Human-readable description of what drifted. e.g. "claim.ARR" */
+  subject: z.string().max(200),
+  previous_confidence: z.number().min(0).max(1),
+  current_confidence: z.number().min(0).max(1),
+  /** Signed confidence delta. Negative means degradation. */
+  delta: z.number(),
+  severity: DriftSeverity,
+  round: z.number().int().nonnegative(),
+  created_at: z.string().datetime(),
+});
+export type Drift = z.infer<typeof Drift>;
+
+// ─── Governance domain — Contradictions ──────────────────────────────────────
+
+export const ContradictionSeverity = z.enum(["low", "medium", "critical"]);
+export type ContradictionSeverity = z.infer<typeof ContradictionSeverity>;
+
+export const ContradictionStatus = z.enum(["open", "resolved", "deferred"]);
+export type ContradictionStatus = z.infer<typeof ContradictionStatus>;
+
+export const Contradiction = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  /** Text of the first conflicting claim. */
+  claim_a: z.string().max(2000),
+  /** Text of the second conflicting claim. */
+  claim_b: z.string().max(2000),
+  /** Source of claim A (document or agent). */
+  source_a: z.string().max(200),
+  /** Source of claim B (document or agent). */
+  source_b: z.string().max(200),
+  severity: ContradictionSeverity,
+  status: ContradictionStatus,
+  /** Human resolution text — set when status is "resolved". */
+  resolution: z.string().max(2000).optional(),
+  /** User or agent that resolved/deferred. */
+  resolved_by: z.string().max(200).optional(),
+  resolved_at: z.string().datetime().optional(),
+  round: z.number().int().nonnegative(),
+  created_at: z.string().datetime(),
+});
+export type Contradiction = z.infer<typeof Contradiction>;
+
+/** PATCH body for HITL contradiction resolution. */
+export const ResolveContradictionBody = z.object({
+  status: z.enum(["resolved", "deferred"]),
+  resolution: z.string().min(1).max(2000).optional(),
+  resolved_by: z.string().min(1).max(200),
+});
+export type ResolveContradictionBody = z.infer<typeof ResolveContradictionBody>;
+
+// ─── Governance domain — Risks ────────────────────────────────────────────────
+
+export const RiskLevel = z.enum(["low", "medium", "high", "critical"]);
+export type RiskLevel = z.infer<typeof RiskLevel>;
+
+export const Risk = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  /** Plain-language description of the risk. */
+  description: z.string().max(2000),
+  level: RiskLevel,
+  /** e.g. "legal" | "financial" | "operational" | "reputational" */
+  category: z.string().max(100).optional(),
+  /** Source document or agent that identified this risk. */
+  source: z.string().max(200),
+  round: z.number().int().nonnegative(),
+  created_at: z.string().datetime(),
+});
+export type Risk = z.infer<typeof Risk>;
+
+// ─── Governance domain — Documents ───────────────────────────────────────────
+
+export const DocumentStatus = z.enum(["pending", "processing", "indexed", "failed"]);
+export type DocumentStatus = z.infer<typeof DocumentStatus>;
+
+export const SgrsDocument = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  /** Display name of the document (filename or URL title). */
+  name: z.string().max(500),
+  /** File extension / MIME category: "pdf" | "docx" | "xlsx" | "txt" | "url" */
+  type: z.string().max(50),
+  status: DocumentStatus,
+  /** Number of claims extracted from this document so far. */
+  claim_count: z.number().int().nonnegative().default(0),
+  ingested_at: z.string().datetime(),
+});
+export type SgrsDocument = z.infer<typeof SgrsDocument>;
+
+// ─── Governance domain — Epoch summaries ─────────────────────────────────────
+
+export const EpochSummaryComment = z.object({
+  id: z.string().uuid(),
+  author: z.string().max(200),
+  text: z.string().min(1).max(5000),
+  created_at: z.string().datetime(),
+});
+export type EpochSummaryComment = z.infer<typeof EpochSummaryComment>;
+
+export const EpochSummary = z.object({
+  id: z.string().uuid(),
+  scope_id: ScopeId,
+  round: z.number().int().nonnegative(),
+  /** Auto-generated narrative summary of the epoch. */
+  summary_text: z.string(),
+  claim_count: z.number().int().nonnegative(),
+  drift_count: z.number().int().nonnegative(),
+  contradiction_count: z.number().int().nonnegative(),
+  risk_count: z.number().int().nonnegative(),
+  score: z.number().min(0).max(1),
+  state: ScopeState,
+  comments: z.array(EpochSummaryComment).default([]),
+  created_at: z.string().datetime(),
+});
+export type EpochSummary = z.infer<typeof EpochSummary>;
+
+/** POST body for adding a HITL comment to an epoch summary. */
+export const AddEpochCommentBody = z.object({
+  author: z.string().min(1).max(200),
+  text: z.string().min(1).max(5000),
+});
+export type AddEpochCommentBody = z.infer<typeof AddEpochCommentBody>;
+
 /** Placeholder — full OpenAPI spec lives at packages/api-schema/openapi.json. */
 export const API_VERSION = "v1";

@@ -1,0 +1,39 @@
+{
+  "name": "@sgrs/db",
+  "version": "0.0.0",
+  "description": "SGRS persistence layer — Drizzle ORM (PGlite / PostgreSQL) + DuckDB analytics",
+  "license": "BUSL-1.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src", "drizzle"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo 'lint skipped'",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@duckdb/node-api": "1.2.1",
+    "@electric-sql/pglite": "0.2.17",
+    "@sgrs/api-schema": "workspace:*",
+    "drizzle-orm": "0.41.0",
+    "postgres": "3.4.5"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.30.0",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

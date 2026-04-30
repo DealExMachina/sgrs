@@ -1,0 +1,261 @@
+/**
+ * Project Horizon seed — M&A due-diligence demo scenario.
+ *
+ * Populates scopes, model handles, agents, and finality status for the
+ * default "horizon" tenant. Mirrors the mock data in apps/studio/lib/mock-data.ts
+ * so the live API renders the same scenario as the static prototype.
+ *
+ * Usage:
+ *   tsx src/seed.ts
+ *   DATABASE_URL=postgresql://… tsx src/seed.ts
+ *
+ * Idempotent — uses INSERT … ON CONFLICT DO NOTHING.
+ */
+
+import { fileURLToPath } from "node:url";
+import { eq } from "drizzle-orm";
+import { createDb } from "./client.js";
+import {
+  agents,
+  finalityStatus,
+  modelHandles,
+  scopes,
+} from "./schema.js";
+
+const TENANT = "horizon";
+
+// ─── Scopes ───────────────────────────────────────────────────────────────────
+
+const SEED_SCOPES = [
+  {
+    id: "deal-horizon",
+    tenant_id: TENANT,
+    name: "Horizon",
+    tag: "M&A",
+    state: "near-final" as const,
+    score: 0.78,
+    cycles: 14,
+  },
+  {
+    id: "green-bond-2026",
+    tenant_id: TENANT,
+    name: "Green Bond 2026",
+    tag: "EUGBS",
+    state: "active" as const,
+    score: 0.64,
+    cycles: 23,
+  },
+  {
+    id: "solvency-ii-q1",
+    tenant_id: TENANT,
+    name: "Solvency II Q1",
+    tag: "Insurance",
+    state: "resolved" as const,
+    score: 0.94,
+    cycles: 8,
+  },
+  {
+    id: "kyc-2025-h2",
+    tenant_id: TENANT,
+    name: "KYC-2025-H2",
+    tag: "AML",
+    state: "archived" as const,
+    score: 0.91,
+    cycles: 41,
+  },
+];
+
+// ─── Agents ───────────────────────────────────────────────────────────────────
+
+const SEED_AGENTS = [
+  {
+    id: "int-extractor-01",
+    tenant_id: TENANT,
+    name: "Extractor",
+    role: "extractor" as const,
+    kind: "internal" as const,
+    scopes: ["deal-horizon", "green-bond-2026"],
+  },
+  {
+    id: "int-comparator-01",
+    tenant_id: TENANT,
+    name: "Comparator",
+    role: "comparator" as const,
+    kind: "internal" as const,
+    scopes: ["deal-horizon"],
+  },
+  {
+    id: "int-arbiter-01",
+    tenant_id: TENANT,
+    name: "Arbiter",
+    role: "arbiter" as const,
+    kind: "internal" as const,
+    scopes: ["deal-horizon", "solvency-ii-q1"],
+  },
+  {
+    id: "int-proposer-01",
+    tenant_id: TENANT,
+    name: "Proposer",
+    role: "proposer" as const,
+    kind: "internal" as const,
+    scopes: ["deal-horizon"],
+  },
+  {
+    id: "int-reviewer-01",
+    tenant_id: TENANT,
+    name: "Reviewer",
+    role: "reviewer" as const,
+    kind: "internal" as const,
+    scopes: ["deal-horizon", "kyc-2025-h2"],
+  },
+  {
+    id: "int-status-01",
+    tenant_id: TENANT,
+    name: "Status Monitor",
+    role: "status" as const,
+    kind: "internal" as const,
+    scopes: SEED_SCOPES.map((s) => s.id),
+  },
+];
+
+// ─── Finality status ──────────────────────────────────────────────────────────
+
+const SEED_FINALITY = [
+  {
+    scope_id: "deal-horizon",
+    tenant_id: TENANT,
+    score: 0.78,
+    per_dimension: {
+      claim_confidence: 0.82,
+      contradiction_resolution: 0.61,
+      goal_completion: 0.79,
+      risk_score_inverse: 0.88,
+    },
+    monotonicity_rounds: 14,
+    plateau_ema: 0.031,
+    convergence_rate: 0.042,
+    state: "near-final" as const,
+    veto_active: true, // x-arr contradiction unresolved
+  },
+  {
+    scope_id: "green-bond-2026",
+    tenant_id: TENANT,
+    score: 0.64,
+    per_dimension: {
+      claim_confidence: 0.71,
+      contradiction_resolution: 0.55,
+      goal_completion: 0.68,
+      risk_score_inverse: 0.63,
+    },
+    monotonicity_rounds: 23,
+    plateau_ema: 0.018,
+    convergence_rate: 0.021,
+    state: "active" as const,
+    veto_active: false,
+  },
+  {
+    scope_id: "solvency-ii-q1",
+    tenant_id: TENANT,
+    score: 0.94,
+    per_dimension: {
+      claim_confidence: 0.96,
+      contradiction_resolution: 0.93,
+      goal_completion: 0.95,
+      risk_score_inverse: 0.91,
+    },
+    monotonicity_rounds: 8,
+    plateau_ema: 0.004,
+    convergence_rate: 0.008,
+    state: "resolved" as const,
+    veto_active: false,
+  },
+  {
+    scope_id: "kyc-2025-h2",
+    tenant_id: TENANT,
+    score: 0.91,
+    per_dimension: {
+      claim_confidence: 0.93,
+      contradiction_resolution: 0.9,
+      goal_completion: 0.92,
+      risk_score_inverse: 0.89,
+    },
+    monotonicity_rounds: 41,
+    plateau_ema: 0.002,
+    convergence_rate: 0.003,
+    state: "archived" as const,
+    veto_active: false,
+  },
+];
+
+// ─── Seed runner ──────────────────────────────────────────────────────────────
+
+export async function seed(databaseUrl?: string): Promise<void> {
+  const db = createDb(databaseUrl);
+
+  console.log("[sgrs][seed] Seeding Project Horizon scenario…");
+
+  // Scopes
+  for (const row of SEED_SCOPES) {
+    const existing = await db
+      .select({ id: scopes.id })
+      .from(scopes)
+      .where(eq(scopes.id, row.id));
+    if (existing.length === 0) {
+      await db.insert(scopes).values(row);
+      console.log(`  [scope] inserted ${row.id}`);
+    } else {
+      console.log(`  [scope] skipped ${row.id} (already exists)`);
+    }
+  }
+
+  // Agents
+  for (const row of SEED_AGENTS) {
+    const existing = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(eq(agents.id, row.id));
+    if (existing.length === 0) {
+      await db.insert(agents).values(row);
+      console.log(`  [agent] inserted ${row.id}`);
+    } else {
+      console.log(`  [agent] skipped ${row.id} (already exists)`);
+    }
+  }
+
+  // Finality status (upsert)
+  for (const row of SEED_FINALITY) {
+    await db
+      .insert(finalityStatus)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [finalityStatus.scope_id],
+        set: {
+          score: row.score,
+          per_dimension: row.per_dimension,
+          monotonicity_rounds: row.monotonicity_rounds,
+          plateau_ema: row.plateau_ema,
+          convergence_rate: row.convergence_rate,
+          state: row.state,
+          veto_active: row.veto_active,
+          updated_at: new Date(),
+        },
+      });
+    console.log(`  [finality] upserted ${row.scope_id}`);
+  }
+
+  // Note: model handles are NOT seeded with real keys.
+  // Operators must connect models via POST /api/models.
+  console.log("[sgrs][seed] Done. (No model handles seeded — connect via API.)");
+
+  // Skip inserting into modelHandles — no real keys in seed data
+  void modelHandles;
+}
+
+// ─── CLI entrypoint ───────────────────────────────────────────────────────────
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  seed().catch((err) => {
+    console.error("[sgrs][seed] Seed failed:", err);
+    process.exit(1);
+  });
+}

@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import preset from "@sgrs/ui/tailwind-preset";
+import preset from "../../packages/ui/dist/tailwind-preset.js";
 
 const config: Config = {
   presets: [preset as Partial<Config>],

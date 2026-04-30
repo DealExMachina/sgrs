@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@sgrs/ui";
-import type { ScopeSummary } from "@/lib/mock-data";
+import type { ScopeItem } from "@/lib/types";
 
 const NAV = [
   { id: "governance", label: "Governance", n: "v3.2.1" },
@@ -15,7 +15,7 @@ const NAV = [
 
 type NavId = (typeof NAV)[number]["id"];
 
-export function ConfigureMode({ scope: _scope }: { scope: ScopeSummary }) {
+export function ConfigureMode({ scope: _scope }: { scope: ScopeItem }) {
   const [active, setActive] = useState<NavId>("governance");
   return (
     <div className="grid h-full grid-cols-[220px_1fr] gap-4 p-4">
