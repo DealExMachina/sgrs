@@ -49,10 +49,7 @@ coverage/
 *.log
 logs/
 
-# Changesets
-.changeset/*.md
-!.changeset/README.md
-!.changeset/config.json
+# .changeset/ is version controlled (changesets are part of the release process)
 
 # Local data (PGlite + DuckDB files — never commit database state)
 data/
