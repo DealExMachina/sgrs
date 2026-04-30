@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sgrs-client"
+version = "0.0.0"
+description = "Python client for the SGRS governance platform — HTTP + optional NATS real-time events"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Deal ex Machina SAS", email = "contact@dealexmachina.fr" }
+]
+keywords = ["sgrs", "api", "client", "governance", "finality"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27.0",
+  "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+nats = [
+  "nats-py>=2.9.0",
+]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=5.0.0",
+  "ruff>=0.4.0",
+  "black>=24.0.0",
+  "mypy>=1.10.0",
+  "nats-py>=2.9.0",
+]
+test = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dealexmachina/sgrs"
+Documentation = "https://sgrs.readthedocs.io"
+Repository = "https://github.com/dealexmachina/sgrs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sgrs_client"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/README.md",
+  "/LICENSE",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/sgrs_client"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
