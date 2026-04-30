@@ -32,13 +32,13 @@ export function CytoGraph({
   const [zoomPct, setZoomPct] = useState(100);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !data?.nodes?.length) return;
 
     const cy = cytoscape({
       container: containerRef.current,
       elements: {
         nodes: data.nodes.map((n) => ({ data: { ...n } })),
-        edges: data.edges.map((e) => ({ data: { ...e } })),
+        edges: (data.edges || []).map((e) => ({ data: { ...e } })),
       },
       minZoom: 0.45,
       maxZoom: 2.4,
@@ -77,7 +77,16 @@ export function CytoGraph({
     cy.on("zoom", handleZoom);
     cy.ready(() => {
       updateLabels();
-      setTimeout(() => cy.fit(undefined, 60), 30);
+      // Defer fit with explicit container check to ensure dimensions are available
+      setTimeout(() => {
+        try {
+          if (cyRef.current && containerRef.current?.offsetHeight > 0) {
+            cyRef.current.fit(undefined, 60);
+          }
+        } catch (err) {
+          console.warn("[cytoscape] fit failed (container may not be sized):", err);
+        }
+      }, 30);
     });
 
     cy.on("mouseover", "node", (e) => {
