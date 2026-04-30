@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { FinalityStatus } from "@sgrs/api-schema";
 import type { z } from "zod";
 import type { SgrsEvent } from "@sgrs/client-ts";
-import { createClient } from "../api-client.js";
+import { createClient } from "../api-client";
 
 export type ApiFinalityStatus = z.infer<typeof FinalityStatus>;
 

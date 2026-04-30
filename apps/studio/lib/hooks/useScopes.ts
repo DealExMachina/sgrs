@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useReducer } from "react";
 import type { Scope } from "@sgrs/api-schema";
 import type { z } from "zod";
 import type { SgrsEvent } from "@sgrs/client-ts";
-import { createClient } from "../api-client.js";
+import { createClient } from "../api-client";
 
 type ApiScope = z.infer<typeof Scope>;
 

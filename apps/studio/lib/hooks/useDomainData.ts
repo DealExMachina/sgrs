@@ -17,7 +17,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer } from "react";
-import { createClient } from "../api-client.js";
+import { createClient } from "../api-client";
 import type {
   ApiClaim,
   ApiDrift,
@@ -25,7 +25,7 @@ import type {
   ApiRisk,
   ApiSgrsDocument,
   ApiEpochSummary,
-} from "../api-client.js";
+} from "../api-client";
 import type { SgrsEvent } from "@sgrs/client-ts";
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -193,11 +193,16 @@ export function useDomainData(
   }, [scopeId]);
 
   const applyContradictionEvent = useCallback((event: SgrsEvent) => {
-    if (event.scopeId !== scopeId) return;
-    if (event.type === "scope.contradiction.detected") {
-      dispatch({ type: "CONTRADICTION_DETECTED", payload: event.payload as ApiContradiction });
-    } else if (event.type === "scope.contradiction.resolved") {
-      dispatch({ type: "CONTRADICTION_RESOLVED", payload: event.payload as ApiContradiction });
+    if (
+      event.type === "scope.contradiction.detected" ||
+      event.type === "scope.contradiction.resolved"
+    ) {
+      if (event.scopeId !== scopeId) return;
+      if (event.type === "scope.contradiction.detected") {
+        dispatch({ type: "CONTRADICTION_DETECTED", payload: event.payload as ApiContradiction });
+      } else {
+        dispatch({ type: "CONTRADICTION_RESOLVED", payload: event.payload as ApiContradiction });
+      }
     }
   }, [scopeId]);
 
