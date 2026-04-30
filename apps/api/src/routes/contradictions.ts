@@ -27,7 +27,7 @@ const CreateContradictionBody = z.object({
   source_a: z.string().max(200),
   source_b: z.string().max(200),
   severity: ContradictionSeverity,
-  round: z.number().int().nonneg().default(0),
+  round: z.number().int().nonnegative().default(0),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {

@@ -70,3 +70,13 @@ export function createDb(url?: string): Db {
   return drizzlePglite(client, { schema });
 }
 
+/**
+ * Close the underlying database connection.
+ * Required for PGlite file-backed databases before deleting the data directory.
+ */
+export async function closeDb(db: Db): Promise<void> {
+  const client = (db as { $client?: { close?(): Promise<void>; end?(): Promise<void> } }).$client;
+  await client?.close?.();
+  await client?.end?.();
+}
+

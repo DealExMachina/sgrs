@@ -13,7 +13,7 @@
  */
 
 // Database client
-export { createDb } from "./client.js";
+export { createDb, closeDb } from "./client.js";
 export type { Db } from "./client.js";
 
 // Schema tables and types
@@ -23,10 +23,21 @@ export {
   agents,
   finalityStatus,
   finalityCertificates,
+  claims,
+  drifts,
+  contradictions,
+  risks,
+  documents,
+  epochSummaries,
   scopeStateEnum,
   modelProviderEnum,
   agentRoleEnum,
   agentKindEnum,
+  driftSeverityEnum,
+  contradictionSeverityEnum,
+  contradictionStatusEnum,
+  riskLevelEnum,
+  documentStatusEnum,
 } from "./schema.js";
 export type {
   Scope,
@@ -39,6 +50,18 @@ export type {
   NewFinalityStatus,
   FinalityCertificate,
   NewFinalityCertificate,
+  ClaimRow,
+  NewClaim,
+  DriftRow,
+  NewDrift,
+  ContradictionRow,
+  NewContradiction,
+  RiskRow,
+  NewRisk,
+  DocumentRow,
+  NewDocument,
+  EpochSummaryRow,
+  NewEpochSummary,
 } from "./schema.js";
 
 // Cryptography

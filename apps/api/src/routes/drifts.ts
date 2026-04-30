@@ -24,7 +24,7 @@ const CreateDriftBody = z.object({
   current_confidence: z.number().min(0).max(1),
   delta: z.number(),
   severity: DriftSeverity,
-  round: z.number().int().nonneg().default(0),
+  round: z.number().int().nonnegative().default(0),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {

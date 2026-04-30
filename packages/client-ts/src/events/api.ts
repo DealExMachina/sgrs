@@ -228,11 +228,11 @@ export class EventsApi {
 
     void (async () => {
       for await (const status of this._nc!.status()) {
-        if (status.type === "slowConsumer") {
-          console.error(
-            `[sgrs][NATS] Slow consumer detected on subject: ${status.data}. ` +
-              "Messages may be dropped. Consider using JetStream for critical subjects.",
-          );
+        if (
+          status.type === natsModule.Events.Disconnect ||
+          status.type === natsModule.DebugEvents.StaleConnection
+        ) {
+          console.error(`[sgrs][NATS] Connection issue: ${status.type}`, status.data ?? "");
         }
       }
     })();
@@ -574,7 +574,14 @@ export class EventsApi {
         case "scope.finality.near-final": return subjects.scope.finalityNearFinal(tenant, scopeId);
         case "scope.finality.final":     return subjects.scope.finalityFinal(tenant, scopeId);
         case "scope.veto.activated":     return subjects.scope.vetoActivated(tenant, scopeId);
-        case "scope.veto.lifted":        return subjects.scope.vetoLifted(tenant, scopeId);
+        case "scope.veto.lifted":            return subjects.scope.vetoLifted(tenant, scopeId);
+        case "scope.claim.added":            return subjects.scope.claimAdded(tenant, scopeId);
+        case "scope.drift.detected":         return subjects.scope.driftDetected(tenant, scopeId);
+        case "scope.contradiction.detected": return subjects.scope.contradictionDetected(tenant, scopeId);
+        case "scope.contradiction.resolved": return subjects.scope.contradictionResolved(tenant, scopeId);
+        case "scope.risk.identified":        return subjects.scope.riskIdentified(tenant, scopeId);
+        case "scope.document.indexed":       return subjects.scope.documentIndexed(tenant, scopeId);
+        case "scope.epoch.completed":        return subjects.scope.epochCompleted(tenant, scopeId);
         default: {
           const _exhaustive: never = event;
           throw new Error(`Unhandled scope event type: ${(_exhaustive as SgrsEvent).type}`);

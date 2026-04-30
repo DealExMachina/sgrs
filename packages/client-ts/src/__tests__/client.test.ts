@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Client, createClient } from "../client";
+import { Client, createClient } from "../client.js";
 import type { Scope } from "@sgrs/api-schema";
 
 /**
@@ -99,10 +99,16 @@ describe("Client", () => {
       const timeoutClient = new Client({
         baseUrl: "http://localhost:3000",
         timeout: 100,
-        fetch: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 200));
-          return { ok: true, status: 200 };
-        },
+        fetch: (async (_url: string | URL | Request, opts?: RequestInit) => {
+          await new Promise((resolve, reject) => {
+            const id = setTimeout(resolve, 200);
+            opts?.signal?.addEventListener("abort", () => {
+              clearTimeout(id);
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+          return new Response(null, { status: 200 });
+        }) as typeof fetch,
       });
 
       const result = await timeoutClient.scopes.list();
@@ -135,7 +141,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/v1/scopes/test-scope",
+        "http://localhost:3000/api/scopes/test-scope",
         expect.objectContaining({
           method: "GET",
         })
@@ -189,7 +195,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/v1/scopes",
+        "http://localhost:3000/api/scopes",
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({
@@ -201,7 +207,7 @@ describe("Client", () => {
     });
   });
 
-  describe("scopes.update", () => {
+  describe("scopes.patch", () => {
     it("should PATCH with partial data", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -210,10 +216,10 @@ describe("Client", () => {
         json: async () => ({}),
       });
 
-      await client.scopes.update("test-scope", { score: 0.75 });
+      await client.scopes.patch("test-scope", { score: 0.75 });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/v1/scopes/test-scope",
+        "http://localhost:3000/api/scopes/test-scope",
         expect.objectContaining({
           method: "PATCH",
           body: expect.stringContaining('"score":0.75'),
@@ -235,7 +241,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/v1/scopes/test-scope",
+        "http://localhost:3000/api/scopes/test-scope",
         expect.objectContaining({
           method: "DELETE",
         })
@@ -266,7 +272,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/v1/models/connect",
+        "http://localhost:3000/api/models",
         expect.objectContaining({
           method: "POST",
         })

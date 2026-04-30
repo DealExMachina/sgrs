@@ -55,7 +55,7 @@ function deriveAttention(
 
   // ── Veto active (takes precedence over dimension issues) ──────────────────
   if (finalityStatus?.veto_active) {
-    const perDim = finalityStatus.per_dimension ?? {};
+    const perDim: Record<string, number> = finalityStatus.per_dimension ?? {};
     const worstKey = lowestDim(perDim);
     const body = worstKey
       ? `Veto is blocking convergence. ${dimLabel(worstKey)} is the weakest dimension at ${(perDim[worstKey]! * 100).toFixed(0)}%. Resolve the underlying conflict to lift the veto.`
@@ -64,7 +64,7 @@ function deriveAttention(
   }
 
   // ── Inspect per-dimension scores ──────────────────────────────────────────
-  const perDim = finalityStatus?.per_dimension ?? {};
+  const perDim: Record<string, number> = finalityStatus?.per_dimension ?? {};
   const keys   = Object.keys(perDim);
 
   if (keys.length > 0) {

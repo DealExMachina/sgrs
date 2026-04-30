@@ -17,7 +17,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb, runMigrations, AnalyticsDb } from "@sgrs/db";
+import { createDb, closeDb, runMigrations, AnalyticsDb } from "@sgrs/db";
 import { createApp } from "../app.js";
 import type { AppConfig } from "../app.js";
 
@@ -57,7 +57,8 @@ async function makeApp(opts?: { apiKey?: string }) {
     app,
     analytics,
     cleanup: async () => {
-      await analytics.close();
+      await closeDb(db);
+      analytics.close();
       await rm(dbDir, { recursive: true, force: true });
       // Restore env
       if (savedKey !== undefined) process.env.API_KEY = savedKey;

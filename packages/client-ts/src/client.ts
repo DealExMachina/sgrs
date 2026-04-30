@@ -157,8 +157,8 @@ export class Client {
       const response = await this.fetchFn(url, {
         method,
         headers,
-        body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
+        ...(body !== undefined && { body: JSON.stringify(body) }),
       });
 
       const contentType = response.headers.get("content-type");
@@ -230,9 +230,9 @@ export class Client {
       return this.request("GET", `/api/scopes/${encodeURIComponent(scopeId)}`);
     },
 
-    /** Create a new scope. */
+    /** Create a new scope. The server assigns the id. */
     create: async (
-      body: Omit<schema.Scope, "created_at" | "updated_at">,
+      body: Omit<schema.Scope, "id" | "created_at" | "updated_at">,
     ): Promise<ApiResponse<schema.Scope>> => {
       return this.request("POST", "/api/scopes", body);
     },
@@ -308,6 +308,24 @@ export class Client {
       body: Omit<schema.FinalityStatus, "scope_id">,
     ): Promise<ApiResponse<schema.FinalityStatus>> => {
       return this.request("POST", `/api/finality/${encodeURIComponent(scopeId)}`, body);
+    },
+
+    /** Get a finality certificate for a specific convergence round. */
+    certificate: async (
+      scopeId: string,
+      round: number,
+    ): Promise<ApiResponse<schema.FinalityCertificate>> => {
+      return this.request(
+        "GET",
+        `/api/finality/${encodeURIComponent(scopeId)}/certificate/${round}`,
+      );
+    },
+
+    /** Verify a finality certificate signature. */
+    verify: async (
+      certificate: schema.FinalityCertificate,
+    ): Promise<ApiResponse<{ valid: boolean }>> => {
+      return this.request("POST", "/api/finality/verify", certificate);
     },
 
     /**

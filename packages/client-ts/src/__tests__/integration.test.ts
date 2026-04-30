@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createClient } from "../client";
+import { createClient } from "../client.js";
 import type {
   Scope,
   ModelHandle,
@@ -19,27 +19,27 @@ describe("Client Integration Tests", () => {
   ) {
     const calls: Array<{ url: string; method: string; body?: unknown }> = [];
 
-    const mockFetch = async (url: string, options?: RequestInit) => {
+    const mockFetch = async (rawUrl: string | URL | Request, options?: RequestInit): Promise<Response> => {
+      const url = String(rawUrl);
       const method = options?.method || "GET";
       const body = options?.body ? JSON.parse(options.body as string) : null;
       calls.push({ url, method, body });
 
-      const key = `${method} ${url.split("/api/v1/")[1] || "health"}`;
+      const key = `${method} ${url.split("/api/")[1] || "health"}`;
       const response = responses[key];
 
       if (!response) {
         throw new Error(`No mock response for: ${key}`);
       }
 
-      return {
-        ok: response.ok,
-        status: response.status,
-        headers: new Headers({
-          "content-type": response.ok ? "application/json" : "application/json",
-        }),
-        json: async () => response.data,
-        text: async () => JSON.stringify(response.data),
-      };
+      const hasBody = response.data !== null;
+      return new Response(
+        hasBody ? JSON.stringify(response.data) : null,
+        {
+          status: response.status,
+          headers: hasBody ? { "content-type": "application/json" } : {},
+        },
+      );
     };
 
     return { mockFetch, calls };
@@ -97,8 +97,8 @@ describe("Client Integration Tests", () => {
       expect(createResult.ok).toBe(true);
       expect(createResult.data?.id).toBe("horizon-ma-2025");
 
-      // Update scope
-      const updateResult = await client.scopes.update("horizon-ma-2025", {
+      // Partial update scope
+      const updateResult = await client.scopes.patch("horizon-ma-2025", {
         score: 0.65,
         cycles: 3,
       });
@@ -123,7 +123,7 @@ describe("Client Integration Tests", () => {
       };
 
       const { mockFetch } = createMockFetch({
-        "POST models/connect": { ok: true, status: 201, data: modelHandle },
+        "POST models": { ok: true, status: 201, data: modelHandle },
         "GET models": { ok: true, status: 200, data: [modelHandle] },
         "GET models/mh_abc123def456ghi789jkl012": {
           ok: true,
@@ -365,7 +365,7 @@ describe("Client Integration Tests", () => {
       });
 
       await client.scopes.get("scope-with-special/chars");
-      expect(calls[0].url).toContain("scope-with-special%2Fchars");
+      expect(calls[0]!.url).toContain("scope-with-special%2Fchars");
     });
   });
 });

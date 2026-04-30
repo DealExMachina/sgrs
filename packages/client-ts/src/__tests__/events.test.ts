@@ -23,6 +23,7 @@ import {
   EventsApi,
   NatsNotConfiguredError,
   NatsNotConnectedError,
+  type NatsConfig,
 } from "../events/api.js";
 
 // ─── Mock NATS connection ─────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function makeMockNats() {
   return { nc, published, subscriptions, mockSub };
 }
 
-function buildMockEventApi(natsConfig = { servers: "nats://localhost:4222" }) {
+function buildMockEventApi(natsConfig: NatsConfig = { servers: "nats://localhost:4222" }) {
   const api = new EventsApi(natsConfig);
   const { nc } = makeMockNats();
   // Inject mock connection directly (bypass dynamic import)
@@ -163,7 +164,7 @@ const VALID_BASE = {
   id: "550e8400-e29b-41d4-a716-446655440000",
   timestamp: "2026-04-24T12:00:00.000Z",
   tenant: "acme",
-  version: "1",
+  version: "1" as const,
 };
 
 const MINIMAL_FINALITY = {
@@ -354,10 +355,8 @@ describe("publishScopeEvent tenant enforcement", () => {
   it("T-34: publishScopeEvent with unknown type throws explicitly", () => {
     const { api } = buildMockEventApi();
     expect(() =>
-      api.publishScopeEvent("acme", "scope-1", {
-        ...createBaseEvent("acme"),
-        type: "scope.unknown" as any,
-      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      api.publishScopeEvent("acme", "scope-1", { ...createBaseEvent("acme"), type: "scope.unknown" } as any),
     ).toThrow("Unhandled scope event type");
   });
 });

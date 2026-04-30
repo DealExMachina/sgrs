@@ -10,7 +10,7 @@ import type cytoscape from "cytoscape";
  * - Contradictions are diamonds, risks round-diamonds, goals hexagons
  *   (shape alone suffices to distinguish node types at any zoom)
  */
-export const defaultStyle: cytoscape.Stylesheet[] = [
+export const defaultStyle: cytoscape.StylesheetStyle[] = [
   {
     selector: "node",
     style: {

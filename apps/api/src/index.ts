@@ -91,7 +91,7 @@ async function main() {
       await eventsApi.close();
       console.log("[sgrs][api] NATS drained.");
     }
-    await analytics.close();
+    analytics.close();
     console.log("[sgrs][api] DuckDB closed. Bye.");
     process.exit(0);
   };

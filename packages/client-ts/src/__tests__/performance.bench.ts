@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { Client } from "../client";
+import { Client } from "../client.js";
 import type { Scope } from "@sgrs/api-schema";
 
 /**
@@ -11,12 +11,10 @@ import type { Scope } from "@sgrs/api-schema";
 
 describe("Client Performance Benchmarks", () => {
   // Helper to create mock fetch with configurable response time
-  function createMockFetch(responseTimeMs: number = 0) {
-    return async (url: string, options?: RequestInit) => {
+  function createMockFetch(responseTimeMs: number = 0): typeof fetch {
+    return async (url: string | URL | Request, _options?: RequestInit) => {
       if (responseTimeMs > 0) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, responseTimeMs)
-        );
+        await new Promise((resolve) => setTimeout(resolve, responseTimeMs));
       }
 
       const scope: Scope = {
@@ -30,12 +28,11 @@ describe("Client Performance Benchmarks", () => {
         updated_at: new Date().toISOString(),
       };
 
-      return {
-        ok: true,
+      const body = String(url).includes("scopes") ? scope : [scope];
+      return new Response(JSON.stringify(body), {
         status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: async () => (url.includes("scopes") ? scope : [scope]),
-      };
+        headers: { "content-type": "application/json" },
+      });
     };
   }
 
@@ -70,12 +67,12 @@ describe("Client Performance Benchmarks", () => {
       });
     });
 
-    bench("PATCH /scopes/{id} (update)", async () => {
+    bench("PATCH /scopes/{id} (patch)", async () => {
       const client = new Client({
         baseUrl: "http://localhost:3000",
         fetch: createMockFetch(0),
       });
-      await client.scopes.update("test-scope", { score: 0.75 });
+      await client.scopes.patch("test-scope", { score: 0.75 });
     });
 
     bench("DELETE /scopes/{id} (delete)", async () => {
@@ -166,7 +163,7 @@ describe("Client Performance Benchmarks", () => {
           cycles: 0,
         });
         await client.scopes.get(`scope-${i}`);
-        await client.scopes.update(`scope-${i}`, { score: 0.75 });
+        await client.scopes.patch(`scope-${i}`, { score: 0.75 });
         await client.scopes.delete(`scope-${i}`);
       }
     });
@@ -252,39 +249,33 @@ describe("Client Performance Benchmarks", () => {
     bench("Handle 404 error response", async () => {
       const client = new Client({
         baseUrl: "http://localhost:3000",
-        fetch: async () => ({
-          ok: false,
-          status: 404,
-          headers: new Headers({ "content-type": "application/json" }),
-          json: async () => ({
-            code: "NOT_FOUND",
-            message: "Scope not found",
+        fetch: async (_url: string | URL | Request, _opts?: RequestInit) =>
+          new Response(JSON.stringify({ code: "NOT_FOUND", message: "Scope not found" }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
           }),
-        }),
       });
 
-      const result = await client.scopes.get("nonexistent");
-      // Verify error was handled
-      if (!result.ok) {
-        return result.error?.code;
-      }
+      await client.scopes.get("nonexistent");
     });
 
     bench("Handle timeout error", async () => {
       const client = new Client({
         baseUrl: "http://localhost:3000",
         timeout: 1,
-        fetch: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return { ok: true, status: 200 };
+        fetch: async (_url: string | URL | Request, opts?: RequestInit) => {
+          await new Promise((resolve, reject) => {
+            const id = setTimeout(resolve, 100);
+            opts?.signal?.addEventListener("abort", () => {
+              clearTimeout(id);
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+          return new Response(null, { status: 200 });
         },
       });
 
-      const result = await client.scopes.list();
-      // Verify timeout was handled
-      if (!result.ok) {
-        return result.error?.code;
-      }
+      await client.scopes.list();
     });
   });
 });

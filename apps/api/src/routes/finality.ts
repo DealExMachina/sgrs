@@ -126,8 +126,7 @@ export function createFinalityRouter(db: Db, analytics: AnalyticsDb, eventsApi?:
       ...body,
     } satisfies z.infer<typeof FinalityStatus>;
 
-    // Fire-and-forget DuckDB time-series append
-    void analytics
+    await analytics
       .appendFinalitySnapshot({
         scope_id: scopeId,
         tenant_id: tenantId,

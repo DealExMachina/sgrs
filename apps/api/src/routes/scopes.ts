@@ -34,11 +34,18 @@ const CreateScopeBody = z.object({
   tag: z.string().min(1).max(40),
   state: ScopeState.optional().default("active"),
   score: z.number().min(0).max(1).optional().default(0),
-  cycles: z.number().int().nonneg().optional().default(0),
+  cycles: z.number().int().nonnegative().optional().default(0),
 });
 
 const UpdateScopeBody = CreateScopeBody.omit({ id: true });
-const PatchScopeBody = UpdateScopeBody.partial();
+// Explicit optional fields — no inherited .default() so empty {} stays empty after parse.
+const PatchScopeBody = z.object({
+  name: z.string().min(1).max(200).optional(),
+  tag: z.string().min(1).max(40).optional(),
+  state: ScopeState.optional(),
+  score: z.number().min(0).max(1).optional(),
+  cycles: z.number().int().nonnegative().optional(),
+});
 
 // ─── Router factory ───────────────────────────────────────────────────────────
 

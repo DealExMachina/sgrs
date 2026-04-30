@@ -22,7 +22,7 @@ const CreateRiskBody = z.object({
   level: RiskLevel,
   category: z.string().max(100).optional(),
   source: z.string().max(200),
-  round: z.number().int().nonneg().default(0),
+  round: z.number().int().nonnegative().default(0),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {

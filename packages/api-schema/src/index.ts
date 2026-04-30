@@ -98,7 +98,7 @@ export type FinalityDimension = z.infer<typeof FinalityDimension>;
 export const FinalityStatus = z.object({
   scope_id: ScopeId,
   score: z.number().min(0).max(1),
-  per_dimension: z.record(FinalityDimension, z.number().min(0).max(1)),
+  per_dimension: z.record(z.string(), z.number().min(0).max(1)),
   monotonicity_rounds: z.number().int().nonnegative(),
   plateau_ema: z.number(),
   convergence_rate: z.number(),

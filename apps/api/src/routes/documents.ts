@@ -29,7 +29,7 @@ const CreateDocumentBody = z.object({
 
 const PatchDocumentBody = z.object({
   status: DocumentStatus.optional(),
-  claim_count: z.number().int().nonneg().optional(),
+  claim_count: z.number().int().nonnegative().optional(),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {

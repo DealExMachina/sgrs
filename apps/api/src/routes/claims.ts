@@ -23,7 +23,7 @@ const CreateClaimBody = z.object({
   source: z.string().max(200),
   dimension: FinalityDimension.optional(),
   confidence: z.number().min(0).max(1),
-  round: z.number().int().nonneg().default(0),
+  round: z.number().int().nonnegative().default(0),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {
@@ -37,7 +37,7 @@ function toApiClaim(row: typeof claimsTable.$inferSelect) {
     scope_id: row.scope_id,
     text: row.text,
     source: row.source,
-    dimension: row.dimension ?? undefined,
+    dimension: (row.dimension ?? undefined) as FinalityDimension | undefined,
     confidence: row.confidence,
     round: row.round,
     created_at: row.created_at.toISOString(),

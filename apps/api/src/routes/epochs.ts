@@ -20,12 +20,12 @@ import * as ev from "../events.js";
 
 const CreateEpochBody = z.object({
   scope_id: z.string(),
-  round: z.number().int().nonneg(),
+  round: z.number().int().nonnegative(),
   summary_text: z.string().min(1),
-  claim_count: z.number().int().nonneg().default(0),
-  drift_count: z.number().int().nonneg().default(0),
-  contradiction_count: z.number().int().nonneg().default(0),
-  risk_count: z.number().int().nonneg().default(0),
+  claim_count: z.number().int().nonnegative().default(0),
+  drift_count: z.number().int().nonnegative().default(0),
+  contradiction_count: z.number().int().nonnegative().default(0),
+  risk_count: z.number().int().nonnegative().default(0),
   score: z.number().min(0).max(1),
   state: ScopeState,
 });

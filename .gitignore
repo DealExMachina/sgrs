@@ -53,3 +53,7 @@ logs/
 .changeset/*.md
 !.changeset/README.md
 !.changeset/config.json
+
+# Local data (PGlite + DuckDB files — never commit database state)
+data/
+:memory:/

@@ -11,8 +11,8 @@
  *
  * DuckDB path defaults to DUCKDB_PATH env var, or ":memory:" for tests.
  *
- * All DML uses prepared statements with positional `?` parameters to
- * prevent SQL injection, even for server-generated values.
+ * All DML uses positional `?` parameters to prevent SQL injection, even for
+ * server-generated values.
  */
 
 import { DuckDBInstance } from "@duckdb/node-api";
@@ -87,44 +87,36 @@ export class AnalyticsDb {
       await conn.run(DDL_AUDIT);
       await conn.run(DDL_FINALITY);
     } finally {
-      await conn.close();
+      conn.closeSync();
     }
   }
 
   /**
    * Append an audit event for a mutating API operation.
    *
-   * Uses a prepared statement with positional `?` parameters — safe
-   * against SQL injection even for user-controlled payload data.
+   * Uses positional `?` parameters — safe against SQL injection even for
+   * user-controlled payload data.
    *
    * Fire-and-forget from route handlers — errors are logged, never surfaced.
    */
   async appendAudit(event: AuditEvent): Promise<void> {
     const conn = await this._instance.connect();
     try {
-      const id = crypto.randomUUID();
-      const now = Date.now() / 1000;
-      const payloadStr = JSON.stringify(event.payload);
-
-      const stmt = await conn.prepare(
+      await conn.run(
         "INSERT INTO audit_events (id, recorded_at, event_type, tenant_id, entity_id, actor, payload) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?)"
-      );
-      try {
-        await stmt.run(
-          id,
-          now,
+          "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+          crypto.randomUUID(),
+          Date.now() / 1000,
           event.event_type,
           event.tenant_id,
           event.entity_id,
           event.actor,
-          payloadStr
-        );
-      } finally {
-        await stmt.close();
-      }
+          JSON.stringify(event.payload),
+        ],
+      );
     } finally {
-      await conn.close();
+      conn.closeSync();
     }
   }
 
@@ -135,30 +127,23 @@ export class AnalyticsDb {
   async appendFinalitySnapshot(snapshot: FinalitySnapshot): Promise<void> {
     const conn = await this._instance.connect();
     try {
-      const id = crypto.randomUUID();
-      const now = Date.now() / 1000;
-
-      const stmt = await conn.prepare(
+      await conn.run(
         "INSERT INTO finality_timeseries " +
           "(id, recorded_at, scope_id, tenant_id, score, state, veto_active, monotonicity_rounds) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-      );
-      try {
-        await stmt.run(
-          id,
-          now,
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          crypto.randomUUID(),
+          Date.now() / 1000,
           snapshot.scope_id,
           snapshot.tenant_id,
           snapshot.score,
           snapshot.state,
           snapshot.veto_active,
-          snapshot.monotonicity_rounds
-        );
-      } finally {
-        await stmt.close();
-      }
+          snapshot.monotonicity_rounds,
+        ],
+      );
     } finally {
-      await conn.close();
+      conn.closeSync();
     }
   }
 
@@ -170,7 +155,7 @@ export class AnalyticsDb {
    */
   async recentAudit(
     tenantId: string,
-    limit = 100
+    limit = 100,
   ): Promise<
     Array<{
       id: string;
@@ -184,35 +169,30 @@ export class AnalyticsDb {
     const conn = await this._instance.connect();
     try {
       const safeLimit = Math.min(Math.max(1, Number(limit)), 1000);
-      const stmt = await conn.prepare(
+      const reader = await conn.runAndReadAll(
         "SELECT id, recorded_at, event_type, entity_id, actor, payload " +
           "FROM audit_events " +
           "WHERE tenant_id = ? " +
           "ORDER BY recorded_at DESC " +
-          `LIMIT ${safeLimit}`
+          `LIMIT ${safeLimit}`,
+        [tenantId],
       );
-      try {
-        const result = await stmt.runAndReadAll(tenantId);
-        const rows = result.getRowObjects();
-        return rows.map((r) => ({
-          id: String(r["id"] ?? ""),
-          recorded_at: Number(r["recorded_at"] ?? 0),
-          event_type: String(r["event_type"] ?? ""),
-          entity_id: String(r["entity_id"] ?? ""),
-          actor: String(r["actor"] ?? ""),
-          payload: (() => {
-            try {
-              return JSON.parse(String(r["payload"] ?? "null"));
-            } catch {
-              return null;
-            }
-          })(),
-        }));
-      } finally {
-        await stmt.close();
-      }
+      return reader.getRowObjects().map((r) => ({
+        id: String(r["id"] ?? ""),
+        recorded_at: Number(r["recorded_at"] ?? 0),
+        event_type: String(r["event_type"] ?? ""),
+        entity_id: String(r["entity_id"] ?? ""),
+        actor: String(r["actor"] ?? ""),
+        payload: (() => {
+          try {
+            return JSON.parse(String(r["payload"] ?? "null"));
+          } catch {
+            return null;
+          }
+        })(),
+      }));
     } finally {
-      await conn.close();
+      conn.closeSync();
     }
   }
 
@@ -226,7 +206,7 @@ export class AnalyticsDb {
   async finalityTimeSeries(
     scopeId: string,
     tenantId: string,
-    limit = 500
+    limit = 500,
   ): Promise<
     Array<{
       recorded_at: number;
@@ -239,33 +219,28 @@ export class AnalyticsDb {
     const conn = await this._instance.connect();
     try {
       const safeLimit = Math.min(Math.max(1, Number(limit)), 5000);
-      const stmt = await conn.prepare(
+      const reader = await conn.runAndReadAll(
         "SELECT recorded_at, score, state, veto_active, monotonicity_rounds " +
           "FROM finality_timeseries " +
           "WHERE scope_id = ? AND tenant_id = ? " +
           "ORDER BY recorded_at ASC " +
-          `LIMIT ${safeLimit}`
+          `LIMIT ${safeLimit}`,
+        [scopeId, tenantId],
       );
-      try {
-        const result = await stmt.runAndReadAll(scopeId, tenantId);
-        const rows = result.getRowObjects();
-        return rows.map((r) => ({
-          recorded_at: Number(r["recorded_at"] ?? 0),
-          score: Number(r["score"] ?? 0),
-          state: String(r["state"] ?? "active"),
-          veto_active: Boolean(r["veto_active"] ?? false),
-          monotonicity_rounds: Number(r["monotonicity_rounds"] ?? 0),
-        }));
-      } finally {
-        await stmt.close();
-      }
+      return reader.getRowObjects().map((r) => ({
+        recorded_at: Number(r["recorded_at"] ?? 0),
+        score: Number(r["score"] ?? 0),
+        state: String(r["state"] ?? "active"),
+        veto_active: Boolean(r["veto_active"] ?? false),
+        monotonicity_rounds: Number(r["monotonicity_rounds"] ?? 0),
+      }));
     } finally {
-      await conn.close();
+      conn.closeSync();
     }
   }
 
   /** Flush pending writes and close the DuckDB instance. */
-  async close(): Promise<void> {
-    await this._instance.close();
+  close(): void {
+    this._instance.closeSync();
   }
 }
