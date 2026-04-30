@@ -33,6 +33,7 @@ interface State {
 }
 
 type Action =
+  | { type: "RESET" }
   | { type: "FETCH_START" }
   | { type: "FETCH_SUCCESS"; payload: ApiFinalityStatus }
   | { type: "FETCH_NOT_FOUND" }
@@ -41,6 +42,9 @@ type Action =
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "RESET":
+      return { status: null, isLoading: false, error: null };
+
     case "FETCH_START":
       return { ...state, isLoading: true, error: null };
 
@@ -124,6 +128,11 @@ export function useFinality(
       }
     }
   }, [api, scopeId]);
+
+  // Reset finality status when scopeId changes (before fetching new data)
+  useEffect(() => {
+    dispatch({ type: "RESET" });
+  }, [scopeId]);
 
   useEffect(() => {
     void fetchStatus();

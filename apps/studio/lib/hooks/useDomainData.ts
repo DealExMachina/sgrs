@@ -41,6 +41,7 @@ export interface DomainState {
 }
 
 type Action =
+  | { type: "RESET" }
   | { type: "FETCH_START" }
   | { type: "FETCH_DONE"; payload: Partial<DomainState> }
   | { type: "CLAIM_ADDED"; payload: ApiClaim }
@@ -63,6 +64,9 @@ const INITIAL: DomainState = {
 
 function reducer(state: DomainState, action: Action): DomainState {
   switch (action.type) {
+    case "RESET":
+      return INITIAL;
+
     case "FETCH_START":
       return { ...state, isLoading: true };
 
@@ -169,6 +173,11 @@ export function useDomainData(
       dispatch({ type: "FETCH_DONE", payload: {} });
     }
   }, [api, scopeId]);
+
+  // Reset domain state when scopeId changes (before fetching new data)
+  useEffect(() => {
+    dispatch({ type: "RESET" });
+  }, [scopeId]);
 
   useEffect(() => {
     void fetchAll();
