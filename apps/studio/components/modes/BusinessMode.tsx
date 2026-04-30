@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@sgrs/ui";
 import { Graph } from "../Graph";
 import { ProgressCard } from "../cards/ProgressCard";
@@ -10,11 +10,130 @@ import { SummaryPanel } from "../panels/SummaryPanel";
 import { OverviewPanel } from "../panels/OverviewPanel";
 import { LeftDocsPanel } from "../LeftDocsPanel";
 import { ScopeCounter } from "../ScopeCounter";
-import { horizonScenario } from "@/lib/mock-data";
+import type { GraphData, GraphNode } from "@sgrs/graph";
 import type { ScopeItem } from "@/lib/types";
 import type { ApiFinalityStatus } from "@/lib/hooks/useFinality";
 import type { UseDomainDataResult } from "@/lib/hooks/useDomainData";
 import type { SgrsEvent } from "@sgrs/client-ts";
+
+// ─── Graph data builder ───────────────────────────────────────────────────────
+
+/**
+ * Build a directed graph from domain data (claims, drifts, contradictions, risks, documents).
+ *
+ * Nodes:
+ * - Documents (type: "doc")
+ * - Claims (type: "claim", may be stale)
+ * - Contradictions (type: "contradiction", may be veto)
+ * - Risks (type: "risk")
+ *
+ * Edges:
+ * - Document → Claim (document source → claim)
+ * - Claim → Contradiction (conflicting claims)
+ * - Claim → Risk (claim contributes to risk)
+ * - Drift → Claim (drift detected between claims)
+ */
+function buildGraphData(domain: UseDomainDataResult): GraphData {
+  const nodes: GraphNode[] = [];
+  const edges: Array<{ source: string; target: string; type: "refers" | "supports" | "contradicts" }> = [];
+
+  // ── Document nodes ──────────────────────────────────────────────────────────
+  domain.documents.forEach((doc) => {
+    nodes.push({
+      id: `doc-${doc.id}`,
+      label: doc.name,
+      type: "doc",
+      info: {
+        subtitle: `doc · ${new Date(doc.created_at).toLocaleDateString()}`,
+        desc: `${domain.claims.filter(c => c.source === doc.name).length} claims`,
+      },
+    });
+  });
+
+  // ── Claim nodes ──────────────────────────────────────────────────────────────
+  domain.claims.forEach((claim) => {
+    nodes.push({
+      id: `claim-${claim.id}`,
+      label: claim.text.slice(0, 40) + (claim.text.length > 40 ? "…" : ""),
+      type: "claim",
+      conf: claim.confidence,
+      stale: claim.status === "superseded",
+      info: {
+        subtitle: `claim · conf ${(claim.confidence * 100).toFixed(0)}%`,
+        desc: claim.text,
+      },
+    });
+
+    // Edge: Document → Claim
+    const docNode = domain.documents.find(d => d.name === claim.source);
+    if (docNode) {
+      edges.push({
+        source: `doc-${docNode.id}`,
+        target: `claim-${claim.id}`,
+        type: "refers",
+      });
+    }
+  });
+
+  // ── Contradiction nodes ──────────────────────────────────────────────────────
+  domain.contradictions.forEach((contra) => {
+    nodes.push({
+      id: `contra-${contra.id}`,
+      label: `Contradiction`,
+      type: "contradiction",
+      veto: contra.veto_active,
+      info: {
+        subtitle: contra.veto_active ? "contradiction · VETO" : "contradiction · soft",
+        desc: contra.reason || "Conflicting claims detected",
+      },
+    });
+
+    // Edges: Claims → Contradiction
+    contra.claim_ids.forEach((claimId) => {
+      edges.push({
+        source: `claim-${claimId}`,
+        target: `contra-${contra.id}`,
+        type: "contradicts",
+      });
+    });
+  });
+
+  // ── Risk nodes ───────────────────────────────────────────────────────────────
+  domain.risks.forEach((risk) => {
+    nodes.push({
+      id: `risk-${risk.id}`,
+      label: risk.label,
+      type: "risk",
+      info: {
+        subtitle: `risk · severity ${risk.severity}`,
+        desc: risk.description,
+      },
+    });
+
+    // Edges: Contributing claims → Risk
+    risk.contributing_claim_ids.forEach((claimId) => {
+      edges.push({
+        source: `claim-${claimId}`,
+        target: `risk-${risk.id}`,
+        type: "supports",
+      });
+    });
+  });
+
+  // ── Drift connections ────────────────────────────────────────────────────────
+  // Drifts represent detected conflicts between claims; create edges between them
+  domain.drifts.forEach((drift) => {
+    if (drift.claim_a_id && drift.claim_b_id) {
+      edges.push({
+        source: `claim-${drift.claim_a_id}`,
+        target: `claim-${drift.claim_b_id}`,
+        type: "contradicts",
+      });
+    }
+  });
+
+  return { nodes, edges };
+}
 
 // ─── Tab definition ───────────────────────────────────────────────────────────
 
@@ -61,6 +180,12 @@ export function BusinessMode({
     ]),
   );
 
+  // ── Build dynamic graph from domain data ──────────────────────────────────
+  const graphData = useMemo(
+    () => buildGraphData(domain),
+    [domain.claims, domain.contradictions, domain.drifts, domain.risks, domain.documents],
+  );
+
   return (
     // Flex row: [LeftDocsPanel] [graph + counter column] [right sidebar]
     // The LeftDocsPanel handles its own width animation; flex accommodates it.
@@ -86,7 +211,7 @@ export function BusinessMode({
 
         {/* Graph — fills remaining vertical space */}
         <div className="min-h-0 flex-1 overflow-hidden p-3 pb-0">
-          <Graph data={horizonScenario} className="h-full" />
+          <Graph data={graphData} className="h-full" />
         </div>
       </div>
 
