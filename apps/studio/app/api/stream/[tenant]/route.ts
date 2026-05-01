@@ -29,6 +29,7 @@
 
 import { EventsApi } from "@sgrs/client-ts";
 import type { SgrsEvent } from "@sgrs/client-ts";
+import { TenantId } from "@sgrs/api-schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,21 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> },
 ) {
   const { tenant } = await params;
+
+  const parsedTenant = TenantId.safeParse(tenant);
+  if (!parsedTenant.success) {
+    return Response.json(
+      {
+        error:
+          parsedTenant.error.issues.map((i) => i.message).join("; ") ||
+          "Invalid tenant in stream path",
+        code: "TENANT_INVALID",
+        received: tenant,
+      },
+      { status: 400 },
+    );
+  }
+  const tenantId = parsedTenant.data;
 
   // ── NATS not configured ────────────────────────────────────────────────────
   if (!NATS_URL) {
@@ -56,7 +72,7 @@ export async function GET(
   const eventsApi = new EventsApi({
     servers: NATS_URL,
     ...(NATS_TOKEN && { token: NATS_TOKEN }),
-    name: `sgrs-studio-sse-${tenant}`,
+    name: `sgrs-studio-sse-${tenantId}`,
     // Surface NATS errors to console; don't crash the stream
     onHandlerError: (err: unknown) =>
       console.error("[sgrs][studio][sse] handler error:", err),
@@ -109,7 +125,7 @@ export async function GET(
       // onAllScopeEvents uses a single NATS wildcard subscription (sgrs.scope.{tenant}.>)
       // so every current and future scope event type is automatically relayed.
       // The Studio's useEventStream hook handles routing per event type on the client.
-      eventsApi.onAllScopeEvents(tenant, emit);
+      eventsApi.onAllScopeEvents(tenantId, emit);
     },
 
     cancel() {

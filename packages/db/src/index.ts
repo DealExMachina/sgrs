@@ -8,7 +8,7 @@
  *   decryptApiKey()   — AES-256-GCM decryption
  *   validateEncryptionKey() — startup validator for ENCRYPTION_KEY env var
  *   runMigrations()   — apply pending Drizzle-kit migrations
- *   seed()            — insert Project Horizon demo data
+ *   seed()            — insert Deal Ex Machina (`deal-ex-machina`) demo data
  *   AnalyticsDb       — DuckDB analytics (audit log + finality time-series)
  */
 

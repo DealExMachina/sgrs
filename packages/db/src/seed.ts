@@ -1,20 +1,21 @@
 /**
- * Project Horizon seed — M&A due-diligence demo scenario.
+ * Deal Ex Machina demo seed — M&A due-diligence scenario scopes.
  *
  * Populates scopes, model handles, agents, and finality status for the
- * default "horizon" tenant. Mirrors the mock data in apps/studio/lib/mock-data.ts
+ * default `deal-ex-machina` tenant (Deal Ex Machina demo). Mirrors mock-data in apps/studio/lib/mock-data.ts
  * so the live API renders the same scenario as the static prototype.
  *
  * Usage:
- *   tsx src/seed.ts
- *   DATABASE_URL=postgresql://… tsx src/seed.ts
+ *   pnpm --filter @sgrs/db db:seed
+ *   DATABASE_URL=postgresql://… pnpm --filter @sgrs/db db:seed
  *
- * Idempotent — uses INSERT … ON CONFLICT DO NOTHING.
+ * Idempotent — upserts on primary keys so reruns fix migrated tenant IDs
+ * (`horizon`, `DEAL_EX_MACHINA`, etc.) and refresh demo metric fields.
  */
 
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
-import { createDb } from "./client.js";
+import type { Db } from "./client.js";
+import * as schema from "./schema.js";
 import {
   agents,
   finalityStatus,
@@ -22,7 +23,7 @@ import {
   scopes,
 } from "./schema.js";
 
-const TENANT = "horizon";
+const TENANT = "deal-ex-machina";
 
 // ─── Scopes ───────────────────────────────────────────────────────────────────
 
@@ -189,40 +190,45 @@ const SEED_FINALITY = [
 
 // ─── Seed runner ──────────────────────────────────────────────────────────────
 
-export async function seed(databaseUrl?: string): Promise<void> {
-  const db = createDb(databaseUrl);
+async function runSeedBody(db: Db): Promise<void> {
+  console.log("[sgrs][seed] Upserting deal-ex-machina demo scenario…");
 
-  console.log("[sgrs][seed] Seeding Project Horizon scenario…");
-
-  // Scopes
   for (const row of SEED_SCOPES) {
-    const existing = await db
-      .select({ id: scopes.id })
-      .from(scopes)
-      .where(eq(scopes.id, row.id));
-    if (existing.length === 0) {
-      await db.insert(scopes).values(row);
-      console.log(`  [scope] inserted ${row.id}`);
-    } else {
-      console.log(`  [scope] skipped ${row.id} (already exists)`);
-    }
+    await db
+      .insert(scopes)
+      .values(row)
+      .onConflictDoUpdate({
+        target: scopes.id,
+        set: {
+          tenant_id: row.tenant_id,
+          name: row.name,
+          tag: row.tag,
+          state: row.state,
+          score: row.score,
+          cycles: row.cycles,
+          updated_at: new Date(),
+        },
+      });
+    console.log(`  [scope] upserted ${row.id}`);
   }
 
-  // Agents
   for (const row of SEED_AGENTS) {
-    const existing = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(eq(agents.id, row.id));
-    if (existing.length === 0) {
-      await db.insert(agents).values(row);
-      console.log(`  [agent] inserted ${row.id}`);
-    } else {
-      console.log(`  [agent] skipped ${row.id} (already exists)`);
-    }
+    await db
+      .insert(agents)
+      .values(row)
+      .onConflictDoUpdate({
+        target: agents.id,
+        set: {
+          tenant_id: row.tenant_id,
+          name: row.name,
+          role: row.role,
+          kind: row.kind,
+          scopes: row.scopes,
+        },
+      });
+    console.log(`  [agent] upserted ${row.id}`);
   }
 
-  // Finality status (upsert)
   for (const row of SEED_FINALITY) {
     await db
       .insert(finalityStatus)
@@ -230,6 +236,7 @@ export async function seed(databaseUrl?: string): Promise<void> {
       .onConflictDoUpdate({
         target: [finalityStatus.scope_id],
         set: {
+          tenant_id: row.tenant_id,
           score: row.score,
           per_dimension: row.per_dimension,
           monotonicity_rounds: row.monotonicity_rounds,
@@ -243,12 +250,46 @@ export async function seed(databaseUrl?: string): Promise<void> {
     console.log(`  [finality] upserted ${row.scope_id}`);
   }
 
-  // Note: model handles are NOT seeded with real keys.
-  // Operators must connect models via POST /api/models.
   console.log("[sgrs][seed] Done. (No model handles seeded — connect via API.)");
 
-  // Skip inserting into modelHandles — no real keys in seed data
   void modelHandles;
+}
+
+/**
+ * Applies demo seed data using a short-lived DB connection (closes PGlite /
+ * postgres-js so `pnpm db:seed` always exits cleanly).
+ */
+export async function seed(databaseUrl?: string): Promise<void> {
+  const url = databaseUrl ?? process.env.DATABASE_URL ?? ":memory:";
+  const isPg =
+    url.startsWith("postgresql://") || url.startsWith("postgres://");
+
+  if (isPg) {
+    const postgres = (await import("postgres")).default;
+    const { drizzle } = await import("drizzle-orm/postgres-js");
+    const client = postgres(url, {
+      max: Number(process.env.DATABASE_POOL_SIZE ?? 10),
+      idle_timeout: 30,
+      connect_timeout: 10,
+    });
+    const db = drizzle(client, { schema }) as unknown as Db;
+    try {
+      await runSeedBody(db);
+    } finally {
+      await client.end();
+    }
+    return;
+  }
+
+  const { PGlite } = await import("@electric-sql/pglite");
+  const { drizzle } = await import("drizzle-orm/pglite");
+  const client = new PGlite(url);
+  try {
+    const db = drizzle(client, { schema }) as unknown as Db;
+    await runSeedBody(db);
+  } finally {
+    await client.close();
+  }
 }
 
 // ─── CLI entrypoint ───────────────────────────────────────────────────────────

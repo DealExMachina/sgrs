@@ -1,0 +1,33 @@
+{
+  "name": "@sgrs/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aggregated API (OpenAPI) + TypeScript SDK reference — generated from @sgrs/api-schema and @sgrs/client-ts",
+  "license": "BUSL-1.1",
+  "type": "module",
+  "scripts": {
+    "docs": "node scripts/build.mjs",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@sgrs/client-ts": "workspace:*"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.14.0",
+    "typedoc": "^0.28.16",
+    "typescript": "5.9.3"
+  },
+  "turbo": {
+    "tasks": {
+      "docs": {
+        "inputs": [
+          "scripts/**",
+          "typedoc.json",
+          "../api-schema/openapi.json",
+          "../client-ts/src/**",
+          "../client-ts/README.md"
+        ]
+      }
+    }
+  }
+}

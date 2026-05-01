@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```ts
- * const api = createClient({ tenantId: 'horizon' });
+ * const api = createClient({ tenantId: 'deal-ex-machina' });
  * const scopes = await api.scopes.list();
  * ```
  *
@@ -19,6 +19,7 @@ import type {
   Scope, ModelHandle, FinalityStatus, Agent,
   Claim, Drift, Contradiction, Risk, SgrsDocument, EpochSummary,
   ResolveContradictionBody, AddEpochCommentBody,
+  IngestDocumentRequest, IngestDocumentResponse,
 } from "@sgrs/api-schema";
 import type { z } from "zod";
 
@@ -36,6 +37,8 @@ export type ApiSgrsDocument = z.infer<typeof SgrsDocument>;
 export type ApiEpochSummary = z.infer<typeof EpochSummary>;
 type ApiResolveContradiction = z.infer<typeof ResolveContradictionBody>;
 type ApiAddEpochComment = z.infer<typeof AddEpochCommentBody>;
+type ApiIngestDocumentRequest = z.infer<typeof IngestDocumentRequest>;
+type ApiIngestDocumentResponse = z.infer<typeof IngestDocumentResponse>;
 
 export interface ApiClientConfig {
   /** Tenant ID sent as X-Tenant-ID header on every request. */
@@ -234,6 +237,11 @@ export function createClient(config: ApiClientConfig) {
   const documents = {
     list: (scopeId: string) =>
       apiFetch<ApiSgrsDocument[]>(`/api/documents/${encodeURIComponent(scopeId)}`),
+    ingest: (body: ApiIngestDocumentRequest) =>
+      apiFetch<ApiIngestDocumentResponse>("/api/ingest", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   };
 
   // ── Epochs ────────────────────────────────────────────────────────────────

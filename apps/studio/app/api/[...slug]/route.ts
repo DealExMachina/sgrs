@@ -15,9 +15,12 @@
  * Bridges the frontend (port 3001) and backend (port 3003), allowing both to run on different ports.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 const API_BACKEND = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3003";
+const DEFAULT_TENANT_ID =
+  process.env.NEXT_PUBLIC_TENANT_ID || "deal-ex-machina";
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +36,7 @@ export async function GET(
     const response = await fetch(url, {
       method: "GET",
       headers: {
-        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || "horizon",
+        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || DEFAULT_TENANT_ID,
         "Authorization": request.headers.get("Authorization") || "",
         "Content-Type": "application/json",
       },
@@ -65,7 +68,7 @@ export async function POST(
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || "horizon",
+        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || DEFAULT_TENANT_ID,
         "Authorization": request.headers.get("Authorization") || "",
         "Content-Type": "application/json",
       },
@@ -98,7 +101,7 @@ export async function PUT(
     const response = await fetch(url, {
       method: "PUT",
       headers: {
-        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || "horizon",
+        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || DEFAULT_TENANT_ID,
         "Authorization": request.headers.get("Authorization") || "",
         "Content-Type": "application/json",
       },
@@ -131,7 +134,7 @@ export async function PATCH(
     const response = await fetch(url, {
       method: "PATCH",
       headers: {
-        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || "horizon",
+        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || DEFAULT_TENANT_ID,
         "Authorization": request.headers.get("Authorization") || "",
         "Content-Type": "application/json",
       },
@@ -163,7 +166,7 @@ export async function DELETE(
     const response = await fetch(url, {
       method: "DELETE",
       headers: {
-        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || "horizon",
+        "X-Tenant-ID": request.headers.get("X-Tenant-ID") || DEFAULT_TENANT_ID,
         "Authorization": request.headers.get("Authorization") || "",
         "Content-Type": "application/json",
       },

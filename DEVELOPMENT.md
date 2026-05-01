@@ -189,7 +189,7 @@ Fetch and manage scopes with create/update/delete optimism.
 
 ```typescript
 const { scopes, isLoading, error, refresh, patchScope, deleteScope, applyEvent } =
-  useScopes('horizon');
+  useScopes('deal-ex-machina');
 ```
 
 **Features**:
@@ -251,7 +251,7 @@ GET /api/epochs/:scopeId/latest — Get latest epoch summary
 
 ## Event Types
 
-14 SSE event types in `@sgrs/client-nats`:
+Representative **`SgrsEvent`** shapes (see **`@sgrs/client-ts/events`**; optional **`@sgrs/client-nats`** re-exports the same types for compatibility):
 
 ```typescript
 type SgrsEvent =

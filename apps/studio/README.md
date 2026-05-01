@@ -1,6 +1,6 @@
 # @sgrs/studio
 
-Next.js 15 front-end for the SGRS product.
+Next.js 16 front-end for the SGRS product.
 
 ## Modes
 
@@ -58,6 +58,8 @@ opaque `model_handle` identifiers.
 ```
 pnpm dev
 ```
+
+Ports and `.env.local` layout: see the repo root **`ROUTING_ARCHITECTURE.md`**.
 
 ## License
 

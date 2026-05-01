@@ -382,6 +382,55 @@ describe("Client", () => {
     });
   });
 
+  describe("ingest.document", () => {
+    it("should post the versioned ingest contract to /api/ingest", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          scope_id: "deal-horizon",
+          name: "Horizon ARR memo",
+          type: "txt",
+          document_id: "doc_123",
+          idempotency_key: "idem_123",
+          queued: true,
+          seq: 42,
+          integration_version: "v1",
+          message: "queued",
+        }),
+      });
+
+      const result = await client.ingest.document({
+        scope_id: "deal-horizon",
+        name: "Horizon ARR memo",
+        type: "txt",
+        text: "ARR grew, but renewals are disputed.",
+        document_id: "doc_123",
+        source: "upload",
+        idempotency_key: "idem_123",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(202);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3000/api/ingest",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            scope_id: "deal-horizon",
+            name: "Horizon ARR memo",
+            type: "txt",
+            text: "ARR grew, but renewals are disputed.",
+            document_id: "doc_123",
+            source: "upload",
+            idempotency_key: "idem_123",
+          }),
+        }),
+      );
+    });
+  });
+
   describe("request headers", () => {
     it("should include Authorization header when apiKey is set", async () => {
       const clientWithKey = new Client({

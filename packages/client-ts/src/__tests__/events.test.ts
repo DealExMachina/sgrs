@@ -75,29 +75,31 @@ describe("tok()", () => {
     expect(() => tok("")).toThrow("must not be empty");
   });
 
-  it("T-01: throws on whitespace-only string", () => {
+  it("T-01b: throws on whitespace-only string", () => {
     expect(() => tok("   ")).toThrow("must not be empty");
   });
 
-  it("T-02: replaces dots with underscores", () => {
-    expect(tok("a.b")).toBe("a_b");
+  it("T-02: accepts lowercase kebab-case slugs", () => {
+    expect(tok("acme")).toBe("acme");
+    expect(tok("acme-corp")).toBe("acme-corp");
+    expect(tok("deal-ex-machina")).toBe("deal-ex-machina");
+    expect(tok("scope-42")).toBe("scope-42");
   });
 
-  it("T-03: replaces wildcards with underscores", () => {
-    expect(tok("a*b")).toBe("a_b");
+  it("rejects uppercase, underscores, dots, spaces, wildcards", () => {
+    expect(() => tok("Acme")).toThrow();
+    expect(() => tok("acme_corp")).toThrow();
+    expect(() => tok("a.b")).toThrow();
+    expect(() => tok("a b")).toThrow();
+    expect(() => tok("a*b")).toThrow();
+    expect(() => tok("a>b")).toThrow();
+    expect(() => tok("-ab")).toThrow();
+    expect(() => tok("ab-")).toThrow();
   });
 
-  it("T-04: replaces > with underscore", () => {
-    expect(tok("a>b")).toBe("a_b");
-  });
-
-  it("T-05: replaces spaces with underscores", () => {
-    expect(tok("a b")).toBe("a_b");
-  });
-
-  it("T-05b: replaces null bytes and control characters", () => {
-    expect(tok("a\x00b")).toBe("a_b");
-    expect(tok("a\x1fb")).toBe("a_b");
+  it("T-05c: rejects null bytes and control characters", () => {
+    expect(() => tok("a\x00b")).toThrow();
+    expect(() => tok("a\x1fb")).toThrow();
   });
 
   it("T-06: builds expected veto subject", () => {
@@ -105,11 +107,8 @@ describe("tok()", () => {
     expect(subj).toBe("sgrs.scope.acme.scope-1.veto.activated");
   });
 
-  it("T-07: two tenants differing only in stripped chars get different tokens", () => {
-    // "acme" and "acme.corp" both become "acme" and "acme_corp" — different
-    expect(tok("acme")).toBe("acme");
-    expect(tok("acme.corp")).toBe("acme_corp");
-    expect(tok("acme")).not.toBe(tok("acme.corp"));
+  it("T-07: distinct slug tenants yield distinct NATS prefixes", () => {
+    expect(tok("acme-east")).not.toBe(tok("acme-west"));
   });
 
   it("T-09: allTenantSubjects returns exactly 3 subjects", () => {
@@ -120,14 +119,20 @@ describe("tok()", () => {
     expect(subs[2]).toContain("agent");
   });
 
-  it("T-10: auditStreamName handles edge-case tenant names", () => {
-    expect(auditStreamName("acme corp")).toBe("SGRS_AUDIT_ACME_CORP");
+  it("T-10: auditStreamName derives JetStream key from lowercase tenant", () => {
+    expect(auditStreamName("acme")).toBe("SGRS_AUDIT_ACME");
     expect(auditStreamName("acme-corp")).toBe("SGRS_AUDIT_ACME_CORP");
-    expect(auditStreamName("ACME")).toBe("SGRS_AUDIT_ACME");
+    expect(auditStreamName("deal-ex-machina")).toBe("SGRS_AUDIT_DEAL_EX_MACHINA");
   });
 
   it("T-43: auditStreamName throws on empty tenant", () => {
     expect(() => auditStreamName("   ")).toThrow();
+  });
+
+  it("T-43b: auditStreamName throws on invalid tenant slug", () => {
+    expect(() => auditStreamName("acme corp")).toThrow("Invalid tenant");
+    expect(() => auditStreamName("ACME")).toThrow();
+    expect(() => auditStreamName("acmeCorp")).toThrow();
   });
 
   it("sanitiseDurable: strips invalid chars for JetStream consumer names", () => {
@@ -148,13 +153,9 @@ describe("assertOwnedByTenant()", () => {
     );
   });
 
-  it("T-42: injection attempt with > in tenant is neutralised", () => {
-    // tok("acme>evil") = "acme_evil" — subject is sgrs.scope.acme_evil…
-    const subj = subjects.scope.vetoActivated("acme>evil", "scope-1");
-    expect(subj).not.toContain(">");
-    // assertOwnedByTenant uses tok() on the expected tenant too
-    expect(() => assertOwnedByTenant(subj, "acme>evil")).not.toThrow();
-    expect(() => assertOwnedByTenant(subj, "acme")).toThrow("[SECURITY]");
+  it("T-42: rejects tenant tokens with injection or invalid slug characters", () => {
+    expect(() => subjects.scope.vetoActivated("acme>evil", "scope-1")).toThrow();
+    expect(() => subjects.scope.vetoActivated("acme", "bad>scope")).toThrow();
   });
 });
 

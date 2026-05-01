@@ -22,6 +22,10 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },
+    "docs": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
     "db:generate": {
       "cache": false,
       "outputs": ["drizzle/**"]

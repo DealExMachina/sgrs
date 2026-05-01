@@ -17,6 +17,10 @@
     "./events": {
       "types": "./dist/events/api.d.ts",
       "import": "./dist/events/api.js"
+    },
+    "./events/subjects": {
+      "types": "./dist/events/subjects.d.ts",
+      "import": "./dist/events/subjects.js"
     }
   },
   "files": ["dist", "src"],

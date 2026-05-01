@@ -1,6 +1,30 @@
-# SGRS Routing Architecture
+# SGRS routing and local dev
 
-## Port Assignments
+Ports, environment variables, and how the Studio (`:3001`), API (`:3003`), proxy routes, and NATS fit together.
+
+## Quickstart
+
+From the repo root (Node 20+, pnpm 9+):
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Turbo starts Studio on **:3001** and the API on the port from your root `.env.local` (set `PORT=3003` so Studio’s proxy matches `NEXT_PUBLIC_BACKEND_API_URL`).
+
+The API dev script loads **`/.env.local`** via `apps/api` (`tsx --env-file=../../.env.local`). Studio can use `apps/studio/.env.local` for overrides.
+
+**Supporting services:** this monorepo does not ship `docker-compose`; run Postgres, NATS, and anything else required by `DATABASE_URL` and `NATS_URL` the way your team does (for example the companion swarm kernel repo).
+
+## Port assignments
+
+| Service | Port | Notes |
+|--------|------|--------|
+| Studio (Next.js) | `3001` | `apps/studio` — browser and `/api/*` proxy routes |
+| API (Hono) | `3003` (recommended) | `apps/api` — default without env is `3001`; use `PORT=3003` in root `.env.local` to match Studio proxy defaults |
+| NATS | `4222` | Typical local URL `nats://localhost:4222` |
+| PostgreSQL | often `5433` | When mapped from Docker to avoid clashing with a local `5432` |
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -25,134 +49,126 @@
 │                                         │   │ (apps/api)      │   │
 │                                         └─→ └─────────────────┘   │
 │                                                      │              │
-│                                    (talks to)        │              │
-│                                                      │              │
 │                                    ┌─────────────────┴──────────┐  │
-│                                    │                            │  │
 │                            ┌──────▼──────┐           ┌──────────▼─┐│
-│                            │  PostgreSQL  │           │   DuckDB   ││
-│                            │ :5433        │           │  (in-mem)  ││
-│                            └──────────────┘           └────────────┘│
-│                                                                  │
+│                            │  PostgreSQL │           │   DuckDB    ││
+│                            │ :5433 ...   │           │  (analytics) ││
+│                            └─────────────┘           └─────────────┘│
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Service Configuration
+## Service configuration
 
-### Root Directory (`.env.local`)
+Templates live in `.env.example` — copy values into **root** `.env.local` and optionally `apps/studio/.env.local`.
+
+### Root (`.env.local`)
+
 ```env
-# API Backend — must match NEXT_PUBLIC_BACKEND_API_URL
-PORT=3003                                    # ✓ API listens here
-NATS_URL=nats://localhost:4222               # ✓ Real-time events
+# API listen port — must match NEXT_PUBLIC_BACKEND_API_URL
+PORT=3003
 
-# Frontend Service Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3001    # ✓ Studio frontend
-NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003  # ✓ Matches PORT=3003
+NATS_URL=nats://localhost:4222
+DATABASE_URL=postgresql://...
+
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003
 ```
 
-### Studio App (`apps/studio/.env.local`)
-```env
-# Frontend addresses
-NEXT_PUBLIC_API_URL=http://localhost:3001          # Frontend itself
-NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003  # Backend API
+### Studio (`apps/studio/.env.local`)
 
-# Real-time events
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003
 NATS_URL=nats://localhost:4222
 ```
 
-## Request Flow
+## Request flow
 
-### 1. Frontend to Frontend API (Proxied)
-```
-Browser (localhost:3001)
-    ↓ fetch('/api/claims/deal-horizon')
-Studio Frontend (Next.js)
-    ↓ api-client.ts defaults to http://localhost:3001
-Studio API Routes (app/api/[...slug]/route.ts)
-    ↓ proxies to NEXT_PUBLIC_BACKEND_API_URL
-Backend API (:3003)
-```
+### Browser → Studio proxy → API
 
-**Code References:**
-- `apps/studio/lib/api-client.ts:63` — defaults to `NEXT_PUBLIC_API_URL` (http://localhost:3001)
-- `apps/studio/app/api/[...slug]/route.ts:20` — proxies to `NEXT_PUBLIC_BACKEND_API_URL` (http://localhost:3003)
-- `apps/studio/app/api/scopes/route.ts:9` — proxies to `NEXT_PUBLIC_BACKEND_API_URL` (http://localhost:3003)
-
-### 2. Real-Time Events (SSE + NATS)
 ```
-Browser (localhost:3001)
-    ↓ fetch('/api/stream/horizon')
-Studio Frontend SSE Route (app/api/stream/[tenant]/route.ts)
-    ↓ connects to NATS_URL
-NATS Server (nats://localhost:4222)
-    ↓ streams scope events
-Browser (receives SSE data)
+Browser (:3001)
+  → fetch("/api/…") relative to Studio
+Studio `app/api/[...slug]/route.ts` (and `app/api/scopes/route.ts`)
+  → forwards to NEXT_PUBLIC_BACKEND_API_URL (e.g. :3003)
+API
+  → JSON response
 ```
 
-**Code References:**
-- `apps/studio/app/api/stream/[tenant]/route.ts:36,57` — uses `NATS_URL` environment variable
+**Code:**
 
-### 3. Backend API Internal Connections
+- `apps/studio/lib/api-client.ts` — default base URL `NEXT_PUBLIC_API_URL` → Studio’s own origin (same-origin `/api` proxy).
+- `apps/studio/app/api/[...slug]/route.ts` — catch-all proxy to the backend.
+- `apps/studio/app/api/scopes/route.ts` — scopes proxy (same backend base URL).
+
+### Real-time events (SSE + NATS)
+
 ```
-Backend API (:3003)
-    ↓ connects to
-    ├─ PostgreSQL (localhost:5433)
-    ├─ DuckDB (in-memory or file)
-    └─ NATS (localhost:4222)
+Browser
+  → GET /api/stream/[tenant]
+Studio `app/api/stream/[tenant]/route.ts`
+  → subscribes using NATS_URL
+NATS
+  → streamed as SSE to the browser
 ```
 
-**Code References:**
-- `apps/api/src/index.ts:81` — PORT environment variable (default: 3001, override: 3003)
-- `apps/api/src/index.ts:58` — PostgreSQL connection via `DATABASE_URL`
-- `apps/api/src/index.ts:64-77` — NATS connection via `NATS_URL`
+### Backend dependencies
 
-## Environment Variable Mapping
+```
+apps/api (:3003)
+  → DATABASE_URL (Postgres / PGlite per config)
+  → DuckDB analytics
+  → optional NATS_URL for publishing and event wiring
+```
 
-| Variable | Source | Used By | Value | Purpose |
-|----------|--------|---------|-------|---------|
-| `PORT` | Root .env.local | API Server | `3003` | Backend API listening port |
-| `NEXT_PUBLIC_API_URL` | Root/Studio .env.local | Frontend API Client | `http://localhost:3001` | Frontend's own /api routes (proxies) |
-| `NEXT_PUBLIC_BACKEND_API_URL` | Root/Studio .env.local | API Proxy Routes | `http://localhost:3003` | Where proxies forward requests |
-| `NATS_URL` | Root/Studio .env.local | Both | `nats://localhost:4222` | Real-time event broker |
-| `DATABASE_URL` | Root .env.local | API Server | `postgresql://...` | Primary database |
+`apps/api/src/index.ts`: `PORT` from env, default **`3001`** — set **`PORT=3003`** locally so it matches the Studio proxy.
 
-## Route Consistency Checklist
+## Environment variable map
 
-- [x] **apps/api/src/index.ts** — `PORT=3003` (from root .env.local)
-- [x] **apps/studio/package.json** — `next dev --port 3001` (no conflict with 3003)
-- [x] **apps/studio/lib/api-client.ts** — defaults to `http://localhost:3001` (studio proxy)
-- [x] **apps/studio/app/api/[...slug]/route.ts** — proxies to `NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003`
-- [x] **apps/studio/app/api/scopes/route.ts** — proxies to `NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003`
-- [x] **apps/studio/app/api/stream/[tenant]/route.ts** — connects to `NATS_URL`
+| Variable | Used by | Purpose |
+|----------|---------|---------|
+| `PORT` | API | HTTP listen port |
+| `NEXT_PUBLIC_API_URL` | Studio client | Base URL for API calls (usually Studio origin) |
+| `NEXT_PUBLIC_BACKEND_API_URL` | Studio route handlers | Where `/api/*` proxies forward |
+| `NATS_URL` | Studio SSE route, API | Event broker |
+| `DATABASE_URL` | API | Primary SQL store |
 
-## Starting Services
+## Consistency checklist (local)
+
+- [ ] Root `.env.local`: `PORT=3003` and `NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003`
+- [ ] Studio: `next dev --port 3001` (`apps/studio/package.json`)
+- [ ] `NEXT_PUBLIC_API_URL=http://localhost:3001` so the client hits the proxy, not the API origin directly (unless you intentionally bypass the proxy)
+
+## Running apps individually
 
 ```bash
-# Terminal 1: Backend API (port 3003)
-cd apps/api && npm run dev
-# Output: [sgrs][api] Listening on http://localhost:3003
-
-# Terminal 2: Frontend Studio (port 3001)
-cd apps/studio && npm run dev
-# Output: ▲ Next.js ... - Local: http://localhost:3001
-
-# Terminal 3: Swarm services (docker-compose)
-docker-compose up
-# Services: PostgreSQL (:5433), NATS (:4222), MinIO (:9000), etc.
+pnpm --filter @sgrs/studio dev
+pnpm --filter @sgrs/api dev
 ```
 
-## Troubleshooting
+## Common issues
 
-**Q: "Backend API unreachable" errors**
-- Check: Is API running on port 3003? (`PORT=3003` in root .env.local)
-- Check: Is `NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003` set?
-- Check: Are proxies using the correct environment variable?
+| Symptom | What to check |
+|---------|----------------|
+| Backend unreachable / 503 from proxy | API listening? `curl -sS http://localhost:3003/api/health` (or your `PORT`) |
+| Wrong port / ECONNREFUSED | `lsof -i :3001` and `lsof -i :3003` — Studio vs API must differ |
+| No graph / no domain data | API up, DB reachable, tenant header matches seeded data |
+| SSE never opens | NATS running; `NATS_URL` set where the stream route runs |
+| Stream returns JSON `NATS_DISABLED` | `NATS_URL` unset — stream route deliberately refuses upgrade |
 
-**Q: Port already in use**
-- Check which service is on which port: `lsof -i :3001` and `lsof -i :3003`
-- Verify: Studio on :3001, API on :3003 (not both on :3001)
+## Key files
 
-**Q: SSE/Real-time events not working**
-- Check: Is NATS running? (`nats://localhost:4222`)
-- Check: Is `/api/stream/[tenant]` route accessible?
-- Check: Is `NATS_URL` set in environment?
+- `/.env.local` — API port, DB, NATS, public URLs consumed at build/run time
+- `apps/studio/.env.local` — Studio-only overrides
+- `apps/studio/app/api/[...slug]/route.ts` — generic backend proxy
+- `apps/studio/app/api/scopes/route.ts` — scopes proxy
+- `apps/api/src/index.ts` — API bootstrap (port, NATS, DB)
+
+## Debugging
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:3001/
+curl -sS http://localhost:3003/api/health
+```
+
+In the browser DevTools Network tab, `/api/*` from the Studio origin should succeed when the API and env vars match.

@@ -29,8 +29,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+docs = [
+    "sphinx>=8.2.0,<9",
+    "sphinx_rtd_theme>=3.1.0",
+    "myst-parser>=4.2.0",
+]
 nats = [
-  "nats-py>=2.9.0",
+    "nats-py>=2.9.0",
 ]
 dev = [
   "pytest>=8.0.0",
@@ -60,6 +65,7 @@ include = [
   "/src",
   "/README.md",
   "/LICENSE",
+  "/docs",
 ]
 
 [tool.pytest.ini_options]

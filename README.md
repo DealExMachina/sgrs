@@ -8,12 +8,14 @@ The kernel (Rust + TypeScript orchestration) lives in the companion repo. This r
 
 | Path | Name | License | Published |
 |---|---|---|---|
+| `apps/api` | SGRS REST API (Hono) | BSL 1.1 | no |
 | `apps/studio` | SGRS Studio (Next.js) | BSL 1.1 | no |
 | `packages/ui` | Design tokens + shared components | BSL 1.1 | no |
 | `packages/graph` | Cytoscape React wrapper + layouts | BSL 1.1 | no |
 | `packages/api-schema` | OpenAPI 3.1 + Zod (source of truth) | MIT | later |
 | `packages/client-ts` | `@sgrs/client` for JS/TS | MIT | yes |
 | `packages/client-py` | `sgrs-client` for Python | MIT | yes |
+| `packages/docs` | Generated API + SDK reference (OpenAPI, TypeDoc) | BSL 1.1 | no |
 | `examples/` | Seed scenarios + governance presets | MIT | no |
 
 ## Quickstart (dev)
@@ -22,8 +24,17 @@ Prereqs: Node 20.18+, pnpm 9.15+, Python 3.11+ (for `client-py`).
 
 ```bash
 pnpm install
-pnpm dev                # starts apps/studio on :3000
+pnpm dev   # Turbo: Studio on :3001; API uses PORT from .env.local — use 3003 to match proxies (see docs)
 ```
+
+## Documentation
+
+- [DEVELOPMENT.md](./DEVELOPMENT.md) — Studio hooks, patterns, API route list
+- [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md) — ports, env vars, proxy and SSE flows
+- [PERFORMANCE_GUIDANCE.md](./PERFORMANCE_GUIDANCE.md) — client timeouts, concurrency, and performance checks
+- **`pnpm docs`** — API (OpenAPI / Redoc) + `@sgrs/client-ts` TypeDoc → `packages/docs/dist/` ([`packages/docs/README.md`](./packages/docs/README.md))
+- **`pnpm docs:py`** — Python `sgrs-client` Sphinx site → `packages/client-py/docs/_build/html/` (`scripts/docs-py.sh` manages `packages/client-py/.venv`)
+- [MIGRATION.md](./MIGRATION.md) — schema and upgrade notes where applicable
 
 ## Development modes
 

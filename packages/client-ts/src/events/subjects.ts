@@ -11,32 +11,19 @@
  * For hard protocol-level isolation use one NATS Account per tenant.
  */
 
+import { assertNatsSubjectSlug, TenantId } from "@sgrs/api-schema";
+
 export const SGRS_PREFIX = "sgrs";
 
-// ─── Token sanitisation ───────────────────────────────────────────────────────
-
-const VALID_TOKEN_RE = /^[A-Za-z0-9\-_]+$/;
+// ─── Token validation (same lexical rules as TenantId / scope slugs) ──────────
 
 /**
- * Sanitise a value for use as a NATS subject token.
+ * Validate a NATS subject token — lowercase kebab-case slug, max length 120.
  *
- * Allowlist: [A-Za-z0-9\-_]. All other characters are replaced with "_".
- * Throws on empty input so that `tok("   ")` or `tok("")` never produces
- * a ghost tenant namespace.
- *
- * @throws {Error} on empty string or tokens exceeding 128 characters
+ * @throws {Error} on empty/whitespace or invalid characters
  */
 export function tok(value: string): string {
-  if (!value || !value.trim()) {
-    throw new Error(`NATS subject token must not be empty (got: ${JSON.stringify(value)})`);
-  }
-  const sanitised = value.replace(/[^A-Za-z0-9\-_]/g, "_");
-  if (sanitised.length > 128) {
-    throw new Error(
-      `NATS subject token too long (max 128 chars): "${value.slice(0, 32)}..."`,
-    );
-  }
-  return sanitised;
+  return assertNatsSubjectSlug(value);
 }
 
 /**
@@ -133,14 +120,17 @@ export function allTenantSubjects(tenant: string): [string, string, string] {
 // ─── Stream names ─────────────────────────────────────────────────────────────
 
 function streamKey(tenant: string): string {
-  // Reject empty or whitespace-only tenants before they produce ghost stream names
-  // e.g. "   ".toUpperCase().replace(...) → "___" which is truthy but meaningless
   if (!tenant || !tenant.trim()) {
     throw new Error(
       `Cannot derive stream name from empty or whitespace-only tenant: ${JSON.stringify(tenant)}`,
     );
   }
-  return tenant.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  const t = tenant.trim();
+  const parsed = TenantId.safeParse(t);
+  if (!parsed.success) {
+    throw new Error(`Invalid tenant for stream name: ${JSON.stringify(tenant)}`);
+  }
+  return parsed.data.toUpperCase().replace(/[^A-Z0-9]/g, "_");
 }
 
 /** JetStream stream name for a tenant's full audit log (7-year retention) */

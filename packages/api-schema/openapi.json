@@ -1,0 +1,160 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SGRS API",
+    "version": "0.1.0",
+    "description": "Versioned REST contract for SGRS product APIs and the headless swarm integration boundary."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3003",
+      "description": "Local SGRS API"
+    }
+  ],
+  "paths": {
+    "/api/ingest": {
+      "post": {
+        "summary": "Queue a document for the headless governed swarm",
+        "operationId": "ingestDocument",
+        "parameters": [
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Document queued for asynchronous swarm processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestDocumentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ScopeId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120,
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "IngestDocumentRequest": {
+        "type": "object",
+        "required": ["scope_id", "name", "text"],
+        "properties": {
+          "scope_id": {
+            "$ref": "#/components/schemas/ScopeId"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 50,
+            "default": "txt"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100000
+          },
+          "document_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "additionalProperties": false
+      },
+      "IngestDocumentResponse": {
+        "type": "object",
+        "required": [
+          "scope_id",
+          "name",
+          "type",
+          "document_id",
+          "idempotency_key",
+          "queued",
+          "seq",
+          "integration_version",
+          "message"
+        ],
+        "properties": {
+          "scope_id": {
+            "$ref": "#/components/schemas/ScopeId"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "document_id": {
+            "type": ["string", "null"]
+          },
+          "idempotency_key": {
+            "type": ["string", "null"]
+          },
+          "queued": {
+            "const": true
+          },
+          "seq": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "integration_version": {
+            "const": "v1"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

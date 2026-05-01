@@ -132,23 +132,28 @@ def _connected_api(cfg: NatsConfig | None = None) -> EventsApi:
 
 
 class TestTok:
-    """T-01 — T-04: tok() sanitisation and validation."""
+    """T-01 … T-04: tok() validation."""
 
-    def test_T01_alphanumeric_passthrough(self):
-        """Alphanumeric tokens are returned unchanged."""
+    def test_T01_slug_passthrough(self):
         assert tok("acme123") == "acme123"
+        assert tok("my-tenant-v2") == "my-tenant-v2"
+        assert tok("deal-ex-machina") == "deal-ex-machina"
 
-    def test_T02_allowed_chars_passthrough(self):
-        """Hyphens and underscores are preserved."""
-        assert tok("my-tenant_v2") == "my-tenant_v2"
-
-    def test_T03_disallowed_chars_replaced(self):
-        """Dots, slashes, spaces and wildcards are replaced with underscore."""
-        assert tok("a.b") == "a_b"
-        assert tok("a/b") == "a_b"
-        assert tok("a b") == "a_b"
-        assert tok("a*b") == "a_b"
-        assert tok("a>b") == "a_b"
+    def test_T02_rejects_underscore_uppercase_dots(self):
+        with pytest.raises(ValueError, match="Invalid NATS"):
+            tok("my-tenant_v2")
+        with pytest.raises(ValueError):
+            tok("Acme")
+        with pytest.raises(ValueError):
+            tok("a.b")
+        with pytest.raises(ValueError):
+            tok("a>b")
+        with pytest.raises(ValueError):
+            tok("a*b")
+        with pytest.raises(ValueError):
+            tok("-ab")
+        with pytest.raises(ValueError):
+            tok("ab-")
 
     def test_T04_empty_string_raises(self):
         with pytest.raises(ValueError, match="must not be empty"):
@@ -160,11 +165,12 @@ class TestTok:
 
     def test_T04c_too_long_raises(self):
         with pytest.raises(ValueError, match="too long"):
-            tok("x" * 129)
+            tok("x" * 121)
 
-    def test_T04d_exactly_128_is_ok(self):
-        result = tok("a" * 128)
-        assert len(result) == 128
+    def test_T04d_exactly_120_chars_is_ok(self):
+        slug = "a" * 120
+        assert len(slug) == 120
+        assert tok(slug) == slug
 
 
 class TestAssertOwnedByTenant:
@@ -183,11 +189,9 @@ class TestAssertOwnedByTenant:
         with pytest.raises(ValueError, match=r"\[SECURITY\]"):
             assert_owned_by_tenant("sgrs.scope", TENANT)
 
-    def test_T07b_tenant_with_dots_sanitised(self):
-        """tok() is applied to the tenant before comparison."""
-        # "acme.corp" sanitises to "acme_corp" — subject must match that
-        subj = "sgrs.scope.acme_corp.s1.created"
-        assert_owned_by_tenant(subj, "acme.corp")  # must not raise
+    def test_T07_hyphenated_slug_assertion(self):
+        subj = "sgrs.scope.acme-east.s1.created"
+        assert_owned_by_tenant(subj, "acme-east")
 
 
 class TestSubjectBuilders:
@@ -221,7 +225,13 @@ class TestStreamNames:
     def test_T10_audit_stream_name(self):
         assert audit_stream_name("acme") == "SGRS_AUDIT_ACME"
         assert audit_stream_name("my-tenant") == "SGRS_AUDIT_MY_TENANT"
-        assert audit_stream_name("Tenant Corp") == "SGRS_AUDIT_TENANT_CORP"
+        assert audit_stream_name("deal-ex-machina") == "SGRS_AUDIT_DEAL_EX_MACHINA"
+
+    def test_T10_bad_tenant_raises(self):
+        with pytest.raises(ValueError, match="Invalid tenant"):
+            audit_stream_name("Tenant Corp")
+        with pytest.raises(ValueError):
+            audit_stream_name("UPPERCASE")
 
     def test_T10b_scope_stream_name(self):
         assert scope_stream_name("acme") == "SGRS_SCOPE_ACME"
@@ -566,7 +576,7 @@ class TestSecurity:
         data = {**_base(), "type": "scope.deleted", "scope_id": SCOPE_ID}
 
         class _FakeEvent:
-            def model_dump(self):
+            def model_dump(self, **kwargs: Any) -> dict[str, Any]:
                 return data
 
         await api.publish(subj, _FakeEvent(), tenant=TENANT)  # must not raise
@@ -578,25 +588,25 @@ class TestSecurity:
         data = {**_base(), "type": "scope.deleted", "scope_id": SCOPE_ID}
 
         class _FakeEvent:
-            def model_dump(self):
+            def model_dump(self, **kwargs: Any) -> dict[str, Any]:
                 return data
 
         await api.publish("any.subject", _FakeEvent(), tenant=None)  # no check
         api._nc.publish.assert_awaited_once()
 
-    def test_T34_tok_injection_via_dot(self):
-        """A tenant with embedded dots cannot hijack a different category."""
-        # "acme.scope.other" — the dot should become underscore, not split
-        sanitised = tok("acme.scope.other")
-        assert "." not in sanitised
-        assert sanitised == "acme_scope_other"
+    def test_T34_dots_in_slug_rejected_for_subjects(self):
+        with pytest.raises(ValueError):
+            tok("acme.scope.other")
 
-    def test_T35_tok_injection_via_wildcard(self):
-        """NATS wildcards (* and >) in tenant/scopeId must be neutralised."""
-        assert tok("*") == "_"
-        assert tok(">") == "_"
-        assert tok("a>b") == "a_b"
-        assert tok("a*b") == "a_b"
+    def test_T35_wildcard_tokens_rejected(self):
+        with pytest.raises(ValueError):
+            tok("*")
+        with pytest.raises(ValueError):
+            tok(">")
+        with pytest.raises(ValueError):
+            tok("a>b")
+        with pytest.raises(ValueError):
+            tok("a*b")
 
     @pytest.mark.asyncio
     async def test_T35b_require_raises_not_configured(self):

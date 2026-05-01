@@ -1,0 +1,17 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["../client-ts/src/index.ts"],
+  "tsconfig": "../client-ts/tsconfig.json",
+  "out": "dist/client-ts",
+  "readme": "../client-ts/README.md",
+  "exclude": ["../client-ts/src/**/__tests__/**"],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "compilerOptions": {
+    "skipLibCheck": true
+  }
+}

@@ -1,7 +1,8 @@
-import * as schema from "@sgrs/api-schema";
-import { EventsApi, type NatsConfig } from "./events/api.js";
+import { TenantId } from "@sgrs/api-schema";
+import type * as schema from "@sgrs/api-schema";
+import { EventsApi, type NatsConfig, type TLSConfig } from "./events/api.js";
 
-export type { NatsConfig };
+export type { NatsConfig, TLSConfig };
 
 /**
  * Configuration for the SGRS API client.
@@ -103,7 +104,18 @@ export class Client {
   readonly events: EventsApi;
 
   constructor(config: ClientConfig) {
-    this.config = config;
+    let next = config;
+    if (config.tenantId !== undefined && config.tenantId !== "") {
+      const trimmed = config.tenantId.trim();
+      const parsed = TenantId.safeParse(trimmed);
+      if (!parsed.success) {
+        throw new Error(
+          `Invalid tenantId: ${parsed.error.issues.map((i) => i.message).join("; ")}`,
+        );
+      }
+      next = { ...config, tenantId: parsed.data };
+    }
+    this.config = next;
     this.fetchFn = config.fetch || globalThis.fetch;
     this.events = new EventsApi(config.nats);
   }
@@ -375,6 +387,17 @@ export class Client {
   health = {
     check: async (): Promise<ApiResponse<{ status: string; db: string; timestamp: string }>> => {
       return this.request("GET", "/api/health");
+    },
+  };
+
+  /**
+   * Ingest API — public product entrypoint into the headless swarm.
+   */
+  ingest = {
+    document: async (
+      body: schema.IngestDocumentRequest,
+    ): Promise<ApiResponse<schema.IngestDocumentResponse>> => {
+      return this.request("POST", "/api/ingest", body);
     },
   };
 }

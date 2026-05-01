@@ -9,6 +9,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "docs": "turbo run docs",
+    "docs:py": "bash scripts/docs-py.sh",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",
     "changeset": "changeset",

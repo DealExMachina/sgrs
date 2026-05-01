@@ -36,7 +36,7 @@
  */
 
 export { Client, createClient } from "./client.js";
-export type { ClientConfig, ApiError, ApiResponse, NatsConfig } from "./client.js";
+export type { ClientConfig, ApiError, ApiResponse, NatsConfig, TLSConfig } from "./client.js";
 
 // Real-time event types and utilities
 export { EventsApi, NatsNotConfiguredError, NatsNotConnectedError } from "./events/api.js";
@@ -70,7 +70,16 @@ export type {
   AgentTaskFailedEvent,
 } from "./events/schema.js";
 export { createBaseEvent, EventValidationError } from "./events/schema.js";
-export { subjects, allTenantSubjects, auditStreamName, scopeStreamName } from "./events/subjects.js";
+export {
+  tok,
+  assertOwnedByTenant,
+  subjects,
+  allTenantSubjects,
+  auditStreamName,
+  scopeStreamName,
+  SGRS_PREFIX,
+  sanitiseDurable,
+} from "./events/subjects.js";
 
 // REST schema types
 export * from "./schema.js";

@@ -1,18 +1,18 @@
 /**
  * Tenant middleware — enforces the X-Tenant-ID header on every request.
  *
- * Validation rules (mirrors client-ts sanitiseDurable):
- *   - Must be present and non-empty
- *   - Characters: [A-Za-z0-9\-_] only (prevents path traversal, SQL injection)
- *   - Max length: 64 characters
+ * Validation rules — same as `@sgrs/api-schema` {@link TenantId}:
+ *   - Must be present and non-empty (after trim)
+ *   - Lowercase slug: `[a-z0-9]` or `[a-z0-9]([a-z0-9-]*[a-z0-9])?`
+ *   - No underscores, no uppercase
+ *   - Max length: 64
  *
  * On success, the validated tenant ID is stored in `c.var.tenantId`.
  * On failure, returns 400 with a structured error body.
  */
 
+import { TenantId } from "@sgrs/api-schema";
 import type { Context, MiddlewareHandler, Next } from "hono";
-
-const TENANT_PATTERN = /^[A-Za-z0-9\-_]{1,64}$/;
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -26,7 +26,7 @@ export const tenantMiddleware: MiddlewareHandler = async (
 ) => {
   const raw = c.req.header("x-tenant-id") ?? c.req.header("X-Tenant-ID") ?? "";
 
-  if (!raw) {
+  if (!raw.trim()) {
     return c.json(
       {
         error: "Missing X-Tenant-ID header",
@@ -36,11 +36,12 @@ export const tenantMiddleware: MiddlewareHandler = async (
     );
   }
 
-  if (!TENANT_PATTERN.test(raw)) {
+  const parsed = TenantId.safeParse(raw.trim());
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ");
     return c.json(
       {
-        error:
-          "X-Tenant-ID contains invalid characters. Allowed: [A-Za-z0-9\\-_], max 64 chars.",
+        error: msg || "Invalid X-Tenant-ID",
         code: "TENANT_INVALID",
         received: raw,
       },
@@ -48,6 +49,6 @@ export const tenantMiddleware: MiddlewareHandler = async (
     );
   }
 
-  c.set("tenantId", raw);
+  c.set("tenantId", parsed.data);
   await next();
 };

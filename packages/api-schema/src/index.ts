@@ -10,8 +10,54 @@ import { z } from "zod";
  *   - packages/client-py   (via openapi.json emitted from here)
  */
 
-export const ScopeId = z.string().min(1).max(120).regex(/^[a-z0-9][a-z0-9-]*$/);
+/** Lowercase slug: one char [a-z0-9], or [a-z0-9] + (hyphen + segment)* with no leading/trailing hyphen. */
+export const SLUG_LOWERCASE_REGEX =
+  /^(?:[a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])$/;
+
+/** `X-Tenant-ID` — kebab-case slug, no underscores or uppercase (max 64). */
+export const TenantId = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(
+    SLUG_LOWERCASE_REGEX,
+    "tenant id must be lowercase a-z, 0-9, hyphens only; no leading/trailing hyphen",
+  );
+export type TenantId = z.infer<typeof TenantId>;
+
+export const ScopeId = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(
+    SLUG_LOWERCASE_REGEX,
+    "scope id must be lowercase a-z, 0-9, hyphens only; no leading/trailing hyphen",
+  );
 export type ScopeId = z.infer<typeof ScopeId>;
+
+const MAX_NATS_SLUG_LEN = 120;
+
+/**
+ * Validate a NATS subject segment (tenant id, scope id, model handle, …).
+ * Matches {@link TenantId} / {@link ScopeId} lexical rules; max length 120.
+ */
+export function assertNatsSubjectSlug(value: string): string {
+  const t = value.trim();
+  if (!t) {
+    throw new Error("NATS subject token must not be empty");
+  }
+  if (t.length > MAX_NATS_SLUG_LEN) {
+    throw new Error(
+      `NATS subject token too long (max ${MAX_NATS_SLUG_LEN} chars): "${t.slice(0, 24)}…"`,
+    );
+  }
+  if (!SLUG_LOWERCASE_REGEX.test(t)) {
+    throw new Error(
+      `Invalid NATS subject token ${JSON.stringify(value)}: use lowercase a-z, digits, and hyphens inside the segment only (no underscores or uppercase)`,
+    );
+  }
+  return t;
+}
 
 export const ScopeState = z.enum([
   "active",
@@ -236,6 +282,35 @@ export const SgrsDocument = z.object({
   ingested_at: z.string().datetime(),
 });
 export type SgrsDocument = z.infer<typeof SgrsDocument>;
+
+// ─── Product → Headless Swarm Ingest Contract ────────────────────────────────
+
+export const IngestDocumentRequest = z.object({
+  scope_id: ScopeId,
+  name: z.string().min(1).max(500),
+  type: z.string().max(50).default("txt"),
+  text: z.string().min(1).max(100_000),
+  /** Optional product-side document identifier, echoed to the swarm for correlation. */
+  document_id: z.string().min(1).max(200).optional(),
+  /** Optional product/source channel label (upload, url, api, etc.). */
+  source: z.string().min(1).max(500).optional(),
+  /** Idempotency key supplied by clients or Studio for retry-safe ingestion. */
+  idempotency_key: z.string().min(1).max(200).optional(),
+});
+export type IngestDocumentRequest = z.infer<typeof IngestDocumentRequest>;
+
+export const IngestDocumentResponse = z.object({
+  scope_id: ScopeId,
+  name: z.string().min(1).max(500),
+  type: z.string().max(50),
+  document_id: z.string().nullable(),
+  idempotency_key: z.string().nullable(),
+  queued: z.literal(true),
+  seq: z.number().int().nonnegative().nullable(),
+  integration_version: z.literal("v1"),
+  message: z.string(),
+});
+export type IngestDocumentResponse = z.infer<typeof IngestDocumentResponse>;
 
 // ─── Governance domain — Epoch summaries ─────────────────────────────────────
 

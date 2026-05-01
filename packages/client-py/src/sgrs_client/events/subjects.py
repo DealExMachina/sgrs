@@ -2,12 +2,12 @@
 
 Structure:  sgrs.{category}.{tenant}.{id}.{event}
 
-NATS wildcards:
-  *  — exactly one token   e.g. sgrs.scope.acme.*.finality.final
-  >  — one or more tokens  e.g. sgrs.scope.acme.>
+Lexical rules for every subject token mirror ``TenantId`` / scope slugs from the
+REST API schema: lowercase ``[a-z0-9]+`` optionally separated by single hyphens
+(no underscores, uppercase, dots, shell wildcards, or leading/trailing hyphen).
 
-Security: tok() uses an allowlist ([A-Za-z0-9\\-_]) and throws on empty
-input or tokens exceeding 128 characters, preventing subject injection.
+Security: :func:`tok` validates rather than “best-effort” sanitizing, so malformed
+identifiers fail fast instead of collapsing into ambiguous NATS namespaces.
 """
 
 from __future__ import annotations
@@ -16,36 +16,39 @@ import re
 
 SGRS_PREFIX = "sgrs"
 
-# Compiled once at module load — no per-call import overhead (L-3 fix)
-_TOK_RE = re.compile(r"[^A-Za-z0-9\-_]")
-_STREAM_KEY_RE = re.compile(r"[^A-Z0-9_]")
+_SLUG_LOWERCASE = re.compile(r"^(?:[a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])$")
+_MAX_NATSTOKEN_LEN = 120
+_MAX_TENANT_SLUG_LEN = 64
+
+_TOK_SAN_RE = re.compile(r"[^A-Za-z0-9\-_]")  # durable consumer sanitisation
 
 
 def tok(value: str) -> str:
-    """Sanitise a value for use as a NATS subject token.
-
-    Allowlist: [A-Za-z0-9\\-_]. All other characters are replaced with "_".
+    """Validate *value* for use as one dot-separated NATS subject token.
 
     Raises:
-        ValueError: on empty string or tokens exceeding 128 characters.
+        ValueError: on empty/invalid slug or overly long tokens.
     """
-    if not value or not value.strip():
+    t = value.strip()
+    if not t:
         raise ValueError(
-            f"NATS subject token must not be empty (got: {value!r})"
+            f"NATS subject token must not be empty (got: {value!r})",
         )
-    sanitised = _TOK_RE.sub("_", value)
-    if len(sanitised) > 128:
+    if len(t) > _MAX_NATSTOKEN_LEN:
         raise ValueError(
-            f"NATS subject token too long (max 128 chars): {value[:32]!r}..."
+            f"NATS subject token too long (max {_MAX_NATSTOKEN_LEN} chars): "
+            f"{value[:24]!r}…",
         )
-    return sanitised
+    if not _SLUG_LOWERCASE.fullmatch(t):
+        raise ValueError(
+            "Invalid NATS subject token: use lowercase a-z, digits, and hyphens "
+            f"(no underscores or uppercase): {value!r}",
+        )
+    return t
 
 
 def assert_owned_by_tenant(subject: str, tenant: str) -> None:
     """Assert that *subject* is within *tenant*'s namespace.
-
-    Subject structure: sgrs.{category}.{tenant}.{id}.{event}
-    The tenant token is at parts[2].
 
     Raises:
         ValueError: if subject belongs to a different tenant.
@@ -55,7 +58,7 @@ def assert_owned_by_tenant(subject: str, tenant: str) -> None:
     if len(parts) < 3 or parts[2] != tenant_token:
         raise ValueError(
             f"[SECURITY] Subject {subject!r} does not belong to tenant "
-            f"{tenant!r}. Cross-tenant publish rejected."
+            f"{tenant!r}. Cross-tenant publish rejected.",
         )
 
 
@@ -73,18 +76,24 @@ class _ScopeSubjects:
         return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.deleted"
 
     def finality_changed(self, tenant: str, scope_id: str) -> str:
-        return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.changed"
+        return (
+            f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.changed"
+        )
 
     def finality_near_final(self, tenant: str, scope_id: str) -> str:
-        return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.near-final"
+        return (
+            f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.near-final"
+        )
 
     def finality_final(self, tenant: str, scope_id: str) -> str:
-        """Terminal convergence subject — triggers archival and cert issuance."""
-        return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.final"
+        return (
+            f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.finality.final"
+        )
 
     def veto_activated(self, tenant: str, scope_id: str) -> str:
-        """CRITICAL PATH — all swarm agents subscribe here."""
-        return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.veto.activated"
+        return (
+            f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.veto.activated"
+        )
 
     def veto_lifted(self, tenant: str, scope_id: str) -> str:
         return f"{SGRS_PREFIX}.scope.{tok(tenant)}.{tok(scope_id)}.veto.lifted"
@@ -106,7 +115,9 @@ class _ScopeSubjects:
 
 class _ModelSubjects:
     def connected(self, tenant: str, handle: str) -> str:
-        return f"{SGRS_PREFIX}.model.{tok(tenant)}.{tok(handle)}.connected"
+        return (
+            f"{SGRS_PREFIX}.model.{tok(tenant)}.{tok(handle)}.connected"
+        )
 
     def revoked(self, tenant: str, handle: str) -> str:
         return f"{SGRS_PREFIX}.model.{tok(tenant)}.{tok(handle)}.revoked"
@@ -117,20 +128,29 @@ class _ModelSubjects:
 
 class _AgentSubjects:
     def heartbeat(self, tenant: str, agent_id: str) -> str:
-        return f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.heartbeat"
+        return (
+            f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.heartbeat"
+        )
 
     def task_started(self, tenant: str, agent_id: str) -> str:
-        return f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.started"
+        return (
+            f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.started"
+        )
 
     def task_completed(self, tenant: str, agent_id: str) -> str:
-        return f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.completed"
+        return (
+            f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.completed"
+        )
 
     def task_failed(self, tenant: str, agent_id: str) -> str:
-        return f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.failed"
+        return (
+            f"{SGRS_PREFIX}.agent.{tok(tenant)}.{tok(agent_id)}.task.failed"
+        )
 
     def queue(self, tenant: str, task_type: str) -> str:
-        """Queue-group subject — NATS delivers each task to exactly ONE worker."""
-        return f"{SGRS_PREFIX}.agent.queue.{tok(tenant)}.{tok(task_type)}"
+        return (
+            f"{SGRS_PREFIX}.agent.queue.{tok(tenant)}.{tok(task_type)}"
+        )
 
     def all_agents(self, tenant: str) -> str:
         return f"{SGRS_PREFIX}.agent.{tok(tenant)}.>"
@@ -161,7 +181,6 @@ subjects = _Subjects()
 
 
 def all_tenant_subjects(tenant: str) -> list[str]:
-    """All event subjects for a tenant (scope + model + agent)."""
     return [
         subjects.scope.all_scopes(tenant),
         subjects.model.all_models(tenant),
@@ -170,32 +189,27 @@ def all_tenant_subjects(tenant: str) -> list[str]:
 
 
 def _stream_key(tenant: str) -> str:
-    key = _STREAM_KEY_RE.sub("_", tenant.upper().replace(" ", "_"))
-    if not key:
-        raise ValueError(
-            f"Cannot derive stream name from empty tenant: {tenant!r}"
-        )
-    return key
+    t = tenant.strip()
+    if not t:
+        raise ValueError(f"Cannot derive stream name from empty tenant: {tenant!r}")
+    if len(t) > _MAX_TENANT_SLUG_LEN:
+        raise ValueError(f"Invalid tenant for stream name: {tenant!r}")
+    if not _SLUG_LOWERCASE.fullmatch(t):
+        raise ValueError(f"Invalid tenant for stream name: {tenant!r}")
+    return re.sub(r"[^A-Z0-9]", "_", t.upper())
 
 
 def audit_stream_name(tenant: str) -> str:
-    """JetStream stream name for a tenant's full audit log (7-year retention)."""
     return f"SGRS_AUDIT_{_stream_key(tenant)}"
 
 
 def scope_stream_name(tenant: str) -> str:
-    """JetStream stream name for a tenant's scope events."""
     return f"SGRS_SCOPE_{_stream_key(tenant)}"
 
 
 def sanitise_durable(value: str) -> str:
-    """Sanitise a string for use as a JetStream durable consumer name.
-
-    Raises:
-        ValueError: on empty or whitespace-only input.
-    """
     if not value or not value.strip():
         raise ValueError(
-            f"JetStream durable consumer name must not be empty (got: {value!r})"
+            f"JetStream durable consumer name must not be empty (got: {value!r})",
         )
-    return _TOK_RE.sub("_", value)[:128]
+    return _TOK_SAN_RE.sub("_", value)[:128]

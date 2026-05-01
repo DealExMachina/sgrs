@@ -56,6 +56,38 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  docs:
+    name: Docs (OpenAPI + TypeDoc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm docs
+
+  docs-py:
+    name: Docs (Sphinx, sgrs-client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: packages/client-py/pyproject.toml
+      - name: Install package + Sphinx
+        run: |
+          python -m pip install -U pip
+          python -m pip install "./packages/client-py[docs]"
+      - name: Build HTML
+        run: python -m sphinx.cmd.build -W -b html packages/client-py/docs packages/client-py/docs/_build/html
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

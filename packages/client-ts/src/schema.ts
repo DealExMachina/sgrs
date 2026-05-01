@@ -22,4 +22,7 @@ export {
   FinalityCertificate,
   // Version
   API_VERSION,
+  // Ingest
+  IngestDocumentRequest,
+  IngestDocumentResponse,
 } from "@sgrs/api-schema";

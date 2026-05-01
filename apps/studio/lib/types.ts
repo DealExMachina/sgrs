@@ -6,7 +6,7 @@ export type Mode = "business" | "configure" | "debug";
  */
 export type { Scope as ScopeItem } from "@sgrs/api-schema";
 
-/** Tenant ID used for all API calls. Reads NEXT_PUBLIC_TENANT_ID at runtime. */
+/** Default tenant for Studio and seed data (Deal Ex Machina). */
 export const DEFAULT_TENANT_ID =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_TENANT_ID) ||
-  "horizon";
+  "deal-ex-machina";

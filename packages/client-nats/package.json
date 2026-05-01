@@ -1,7 +1,7 @@
 {
   "name": "@sgrs/client-nats",
   "version": "0.1.0",
-  "description": "NATS real-time event client for SGRS governance platform",
+  "description": "Compatibility wrapper for SGRS NATS events; canonical implementation is @sgrs/client-ts/events",
   "keywords": ["sgrs", "nats", "governance", "finality", "events", "real-time"],
   "license": "MIT",
   "type": "module",
@@ -23,15 +23,15 @@
   },
   "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
-    "build": "tsc",
+    "build": "pnpm --dir ../.. --filter @sgrs/api-schema build && pnpm --dir ../.. --filter @sgrs/client-ts build && tsc",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm --dir ../.. --filter @sgrs/api-schema build && pnpm --dir ../.. --filter @sgrs/client-ts build && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@sgrs/api-schema": "workspace:*",
-    "nats": "2.29.3"
+    "@sgrs/client-ts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "22.10.5",

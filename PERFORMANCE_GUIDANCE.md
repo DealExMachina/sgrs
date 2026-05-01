@@ -840,8 +840,7 @@ Before deploying to production:
 
 - **TypeScript Testing:** `packages/client-ts/TESTING.md`
 - **Python Testing:** `packages/client-py/TESTING.md`
-- **Test Coverage Summary:** `TEST_SUMMARY.md`
-- **API Schema:** `packages/api-schema/src/index.ts`
+- **API Schema:** `packages/api-schema/src/index.ts` and `packages/api-schema/openapi.json`
 
 ---
 

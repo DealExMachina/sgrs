@@ -117,6 +117,16 @@ response = await client.get_finality_status('scope-id')
 response = await client.get_finality_certificate('scope-id', round=1)
 ```
 
+## Documentation (Sphinx)
+
+From the **repository root**, `pnpm docs:py` runs `scripts/docs-py.sh`, which maintains `packages/client-py/.venv` so installs work on PEP-668–managed Pythons:
+
+```bash
+pnpm docs:py
+```
+
+Generated HTML: `packages/client-py/docs/_build/html/` (Sphinx sources in `packages/client-py/docs/`).
+
 ## License
 
 MIT - see LICENSE file

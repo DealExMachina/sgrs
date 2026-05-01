@@ -1,6 +1,6 @@
 # SGRS — Lib Delivery Plan
 
-> Working document. Captures the repo's stated objectives, an honest assessment of the current implementation (libs, REST API, NATS streams / SSE), the strict-ESM TypeScript posture we want, and a phased roadmap to ship the publishable libraries.
+> Working document: roadmap for publishable libs and delivery hardening. **Note:** Sections below mix timeless goals with a point-in-time audit; when in doubt, verify with `pnpm typecheck`, `pnpm test`, and the packages in `packages/`.
 
 ---
 
@@ -15,7 +15,7 @@ The repo is the **product surface** for the SGRS kernel (a separate Rust + TS or
 | `packages/api-schema` | OpenAPI 3.1 + Zod (source of truth) | MIT | **later** (npm) |
 | `packages/client-ts` | `@sgrs/client` for JS/TS — HTTP + optional NATS events | MIT | **yes** (npm) |
 | `packages/client-py` | `sgrs-client` for Python — HTTP + optional NATS events | MIT | **yes** (PyPI) |
-| `packages/client-nats` | NATS-only event peer | unspecified | unclear — see §5 |
+| `packages/client-nats` | Compat package re-exporting `@sgrs/client-ts/events` | MIT (aligned with client-ts) | optional — see §5 |
 | `packages/db` | Drizzle ORM + DuckDB analytics | BSL 1.1 | no — internal |
 | `packages/graph` | Cytoscape React wrapper | BSL 1.1 | no — internal |
 | `packages/ui` | Design tokens + shared components | BSL 1.1 | no — internal |
@@ -31,32 +31,18 @@ The repo is the **product surface** for the SGRS kernel (a separate Rust + TS or
 
 - **Surface**: single `src/index.ts` (275 LOC). Exhaustive Zod schemas for Scope / Model / Agent / Finality / and the full governance domain (Claim, Drift, Contradiction, Risk, SgrsDocument, EpochSummary).
 - **Pattern**: every name declared as both `const X = z.…` (runtime schema) and `type X = z.infer<typeof X>` — Zod's standard idiom. TS declaration-merges them so a single `export { X }` re-export carries both.
-- **Status**: **Zod schemas complete. OpenAPI 3.1 spec is missing entirely** despite README, package description, and a comment at line 274 of the source all referencing `packages/api-schema/openapi.json`. The `files` field in package.json even lists `"openapi.json"`. This is the highest-impact gap for delivery — see §6 Phase 1.
-- **Versioning**: `0.0.0`. Pinned `zod 3.23.8` while transitively the workspace resolves zod 4.3.6 — there's a real Zod 3 → 4 inconsistency to settle before publishing.
+- **Status**: Zod schemas and tracked **`packages/api-schema/openapi.json`** are the contract; automate regeneration in CI/build when you tighten the pipeline (still a Phase 1 item).
+- **Versioning**: package version and `zod` should stay aligned workspace-wide (`zod` 4.x in current tree — keep validator and schemas on the same major).
 - **ESM**: `"type": "module"`, `exports: { ".": { types, import } }`. ESM-only ✓. But the build uses base `moduleResolution: bundler`, which is too loose for a published library — see §4.
 
 ### 2.2 `@sgrs/client-ts` — TypeScript SDK (MIT, will publish)
 
-- **Surface** (`src/`):
-  - `client.ts` (369 LOC) — HTTP client (Scopes / Models / Finality / Health), uses native `fetch`.
-  - `events/api.ts` (719 LOC) — NATS real-time transport.
-  - `events/schema.ts` (363 LOC) — typed event union + Zod validators.
-  - `events/subjects.ts` (171 LOC) — subject builders + tenant-ownership assertions.
-  - `schema.ts` (25 LOC) — re-exports from `@sgrs/api-schema`. **Currently broken** (duplicate `type X` re-exports — fix in §6 Phase 0).
-  - `index.ts` (69 LOC) — public barrel.
+- **Surface** (`src/`): HTTP client (`client.ts`), NATS transport (`events/api.ts`), typed event union + Zod validators (`events/schema.ts`), subject builders (`events/subjects.ts`), schema re-exports from `@sgrs/api-schema` (`schema.ts`), public barrel (`index.ts`).
 - **Subpath exports**: `.`, `./schema`, `./events` ✓.
-- **NATS optional**: declared as optional peer dep, dynamically `import()`-ed inside `events/api.ts`. HTTP-only consumers don't pull NATS into their bundle ✓.
-- **Hardening**: top-of-file comments enumerate 9 audited security guarantees (C-1 inbound validation, C-2 handler errors surfaced, C-3 cross-tenant publish rejection, C-5 connection concurrency, H-1 subject-token allowlist, H-2 cleartext warning, H-3 subscription cleanup, H-4 JetStream Consumer API, H-6 audit subscription tracking). Real audit pass evidence.
-- **Tests** (`src/__tests__/`):
-  - `client.test.ts` (444 LOC) — unit tests for HTTP client.
-  - `events.test.ts` (483 LOC) — event builders + subject matching.
-  - `integration.test.ts` (371 LOC) — real HTTP against test server.
-  - `performance.bench.ts` (290 LOC) — vitest bench, **broken** (vitest 1.x types — needs vitest 4.x).
-- **Typecheck status**: failing.
-  - `src/schema.ts` — duplicate identifiers (already fixed locally during this session, not committed).
-  - `src/events/api.ts:231` — `status.type === "slowConsumer"` doesn't overlap with `Events | DebugEvents`. Likely API drift in `nats` package types or a never-narrowing bug.
-  - `src/events/api.ts:579` — exhaustiveness check assigns governance scope event union to `never`. Genuine narrowing bug.
-  - `performance.bench.ts` — vitest 1.x `BenchFunction` type vs current code; mock fetch shape uses old type.
+- **NATS optional**: optional peer dependency; dynamic `import()` in `events/api.ts` keeps HTTP-only bundles lean ✓.
+- **Hardening**: audited guarantees documented in source (tenant ownership, subscription cleanup, cleartext warnings, etc.).
+- **Tests**: `src/__tests__/` — client, events, integration; benches may use a separate Vitest profile.
+- **Quality gate**: run `pnpm typecheck` and `pnpm --filter @sgrs/client-ts test` before publish; resolve any drift between `nats` package types and `events/api.ts`.
 
 ### 2.3 `sgrs-client` Python (MIT, will publish)
 
@@ -92,8 +78,7 @@ The repo is the **product surface** for the SGRS kernel (a separate Rust + TS or
 - **Validation**: `@hono/zod-validator` on every mutating endpoint, schemas from `@sgrs/api-schema`.
 - **Audit**: mutations write to DuckDB analytics + fire-and-forget NATS publish (graceful no-op if NATS disabled).
 - **Health**: pings DB with `SELECT 1`; degrades to 503 on driver error.
-- **Gaps**: no dedicated tests for the 6 governance routes (claims, drifts, contradictions, risks, documents, epochs) in `apps/api/src/__tests__/api.test.ts` — only scopes/finality/health are covered. Acceptable for local boot, blocks confidence for prod.
-- **Peer-dep concern**: `@hono/zod-validator@0.4.3` peers `zod ^3.19.1`, but `api-schema` and the rest of the workspace pull zod 4.x — install warns; runtime may surface as schema-shape divergences. Bump validator to `0.7.x` (zod 4 compatible).
+- **Gaps**: expand automated coverage for governance routes beyond smoke tests as you harden for production.
 
 ### 2.5 SSE / streams — `apps/studio/app/api/stream/[tenant]/route.ts` (140 LOC)
 
@@ -159,12 +144,14 @@ The user wants the TypeScript artifacts shipped strictly ESM. Current state vs t
 
 ## 5. `packages/client-nats` — disposition
 
-The README's package table doesn't list `client-nats`, but the package exists and is imported by `apps/studio`. It overlaps significantly with `@sgrs/client-ts/events`. Two coherent options:
+**Current:** `@sgrs/client-nats` is a thin **compatibility shim** that re-exports `EventsApi` and types from **`@sgrs/client-ts/events`**. Canonical implementation remains in **`@sgrs/client-ts`**.
 
-- **Option A** — **roll into `client-ts`**: keep events under `@sgrs/client-ts/events`, delete `client-nats`. The events surface is already the authoritative impl in `client-ts`. Single artifact, clearer story.
-- **Option B** — **separate publishable `@sgrs/client-nats`**: extract the NATS layer entirely from `client-ts`, leave `client-ts` HTTP-only. Two artifacts, but lets HTTP and NATS evolve independently.
+**Options:**
 
-Recommend **Option A** for v0.1 — fewer moving parts, matches the README's lib table. Revisit if NATS surface grows independently of HTTP.
+- **Option A (recommended)** — Prefer `@sgrs/client-ts/events` everywhere; drop `@sgrs/client-nats` once no dependents remain.
+- **Option B** — Keep the shim until external consumers migrate; avoid duplicating NATS logic in a second implementation.
+
+Treat extra publishable artifact for NATS-only as unnecessary unless consumer demand appears.
 
 ---
 
@@ -196,18 +183,13 @@ Goal: green typecheck, green tests, strict-ESM lib tsconfigs, dep coherence.
 
 5. **License reconciliation**: `client-py/LICENSE` declares BUSL-1.1 but the README and intended publish license is MIT. Pick one and align all three: pyproject classifier, LICENSE file, README header.
 
-6. **Resolve `client-nats` disposition** per §5. Recommend Option A — delete `packages/client-nats`, update studio import to `@sgrs/client-ts/events`, drop the package from `pnpm-workspace.yaml`.
+6. **Resolve `client-nats` disposition** per §5. Prefer `@sgrs/client-ts/events` in new code; remove `@sgrs/client-nats` when no dependents remain.
 
 ### Phase 1 — Ship `@sgrs/api-schema@0.1.0` (npm, MIT)
 
 Highest leverage: it's the upstream source of truth for the other two libs.
 
-1. **Generate `openapi.json` from the Zod schemas** — three options:
-   - `zod-to-openapi` (smallest dep, generates an OpenAPI 3.1 doc from existing Zod definitions).
-   - `@asteasolutions/zod-to-openapi` (more idiomatic registration API).
-   - Hand-roll a thin generator that walks the exported Zod definitions.
-
-   Recommend `@asteasolutions/zod-to-openapi`. Add a `build:openapi` script that emits `openapi.json` next to `dist/`. Keep the file in `files: [...]` so it ships in the npm tarball.
+1. **Keep `openapi.json` authoritative** — the file ships in `packages/api-schema`. Prefer **automated generation from Zod** on each build (`build:openapi`); options include `zod-to-openapi`, `@asteasolutions/zod-to-openapi`, or a small internal generator. Fail CI on drift once the script is wired.
 
 2. **Bake the OpenAPI document into the build pipeline**:
    - `pnpm --filter @sgrs/api-schema build` runs `tsc` *and* `build:openapi`.
@@ -272,11 +254,12 @@ Depends on Phase 1 (api-schema's `openapi.json` is the design contract).
 
 - [README.md](README.md) — stated objectives.
 - [tsconfig.base.json](tsconfig.base.json) — the loose-ESM baseline; needs a strict-lib variant.
-- [packages/api-schema/src/index.ts](packages/api-schema/src/index.ts) — Zod source of truth (line 274: openapi.json placeholder comment).
-- [packages/api-schema/package.json](packages/api-schema/package.json) — claims `openapi.json` in `files`; missing.
-- [packages/client-ts/src/schema.ts](packages/client-ts/src/schema.ts) — duplicate-export typecheck failure.
-- [packages/client-ts/src/events/api.ts](packages/client-ts/src/events/api.ts) — 719 LOC NATS layer; lines 231 & 579 fail typecheck.
-- [packages/client-ts/src/__tests__/performance.bench.ts](packages/client-ts/src/__tests__/performance.bench.ts) — vitest 1.x type drift.
+- [packages/api-schema/src/index.ts](packages/api-schema/src/index.ts) — Zod source of truth.
+- [packages/api-schema/openapi.json](packages/api-schema/openapi.json) — OpenAPI document (keep in sync with Zod).
+- [packages/api-schema/package.json](packages/api-schema/package.json) — ships `openapi.json` in the package `files` list.
+- [packages/client-ts/src/schema.ts](packages/client-ts/src/schema.ts) — re-exports from api-schema.
+- [packages/client-ts/src/events/api.ts](packages/client-ts/src/events/api.ts) — NATS layer; watch for `nats` major upgrades.
+- [packages/client-ts/src/__tests__/performance.bench.ts](packages/client-ts/src/__tests__/performance.bench.ts) — optional bench; keep compatible with the repo Vitest version or exclude from `tsc`.
 - [apps/studio/app/api/stream/[tenant]/route.ts](apps/studio/app/api/stream/[tenant]/route.ts) — well-built SSE; one-connection-per-client at scale is the only real concern.
 - [apps/api/src/app.ts](apps/api/src/app.ts) — middleware wiring.
 - [apps/api/src/routes/](apps/api/src/routes/) — 11 route files, governance domain mostly untested.
@@ -290,7 +273,7 @@ Depends on Phase 1 (api-schema's `openapi.json` is the design contract).
 
 1. **OpenAPI generator choice** (Phase 1) — affects how the spec evolves. Pick before starting the phase.
 2. **client-py: hand-written vs generated** — locked in for v0.1; revisit at v0.2.
-3. **client-nats disposition** — recommend folding into client-ts; user confirmation desired before deletion.
+3. **client-nats disposition** — shim re-exports `client-ts/events`; fold imports into `@sgrs/client-ts` when practical.
 4. **PyPI trusted-publisher prerequisite** — needs DealExMachina admin to register the project before `release-py.yml` will succeed.
 5. **Zod 3 → 4 migration** — small but real surface change (e.g., `z.record(K, V)` arity); api-schema must be touched, not just dep bumped.
 6. **`@hono/zod-validator` major drift** — 0.4 → 0.7 may have minor signature changes; verify in apps/api routes before merging the bump.

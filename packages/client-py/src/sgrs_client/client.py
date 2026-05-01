@@ -51,11 +51,13 @@ class ApiResponse(Generic[T]):
 class Client:
     """SGRS client — unified HTTP REST + optional NATS real-time events.
 
-    HTTP-only usage (no nats-py required):
+    Minimal async example (HTTP only, no ``nats-py``)::
+
         client = Client(base_url='http://localhost:3000')
         scope = await client.get_scope('my-scope')
 
-    With real-time NATS events (requires: pip install 'sgrs-client[nats]'):
+    With NATS real-time events (install ``pip install 'sgrs-client[nats]'``)::
+
         from sgrs_client.events import NatsConfig
 
         client = Client(

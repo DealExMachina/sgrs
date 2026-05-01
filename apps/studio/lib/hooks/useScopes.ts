@@ -5,7 +5,7 @@
  *
  * Usage:
  * ```tsx
- * const { scopes, isLoading, error, refresh, applyEvent } = useScopes('horizon');
+ * const { scopes, isLoading, error, refresh, applyEvent } = useScopes('deal-ex-machina');
  * ```
  *
  * Features:
