@@ -19,7 +19,7 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     environment: pypi-publish
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       id-token: write
       contents: write
