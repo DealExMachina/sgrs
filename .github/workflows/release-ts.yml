@@ -10,18 +10,19 @@ on:
       - "pnpm-lock.yaml"
 
 env:
-  NODE_VERSION: 20.18.0
+  NODE_VERSION: 20.19.0
   PNPM_VERSION: 9.15.0
 
 jobs:
   release:
     name: Publish to npm
     runs-on: ubuntu-latest
+    environment: npm-publish
     # Only run on main branch after merge
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
