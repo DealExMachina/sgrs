@@ -37,34 +37,50 @@ function buildGraphData(domain: UseDomainDataResult): GraphData {
   const nodes: GraphNode[] = [];
   const edges: Array<{ source: string; target: string; type: "refers" | "supports" | "contradicts" }> = [];
 
+  // Build a lookup: claim text → claim id (for contradiction edge resolution)
+  const claimByText = new Map<string, string>();
+  domain.claims.forEach((c) => claimByText.set(c.text, c.id));
+
+  // Build a lookup: claim id → set of contradiction ids (to mark stale)
+  const claimInContradiction = new Set<string>();
+  domain.contradictions.forEach((contra) => {
+    const idA = claimByText.get(contra.claim_a);
+    const idB = claimByText.get(contra.claim_b);
+    if (idA) claimInContradiction.add(idA);
+    if (idB) claimInContradiction.add(idB);
+  });
+
   // ── Document nodes ──────────────────────────────────────────────────────────
   domain.documents.forEach((doc) => {
+    const claimCount = domain.claims.filter(c => c.source === doc.name).length;
     nodes.push({
       id: `doc-${doc.id}`,
       label: doc.name,
       type: "doc",
       info: {
-        subtitle: `doc · ${new Date(doc.created_at).toLocaleDateString()}`,
-        desc: `${domain.claims.filter(c => c.source === doc.name).length} claims`,
+        subtitle: `doc · ${new Date(doc.ingested_at).toLocaleDateString()} · ${claimCount} claims`,
+        desc: doc.name,
       },
     });
   });
 
   // ── Claim nodes ──────────────────────────────────────────────────────────────
   domain.claims.forEach((claim) => {
+    // A claim is stale if it appears in a critical contradiction (superseded)
+    const isStale = claimInContradiction.has(claim.id) && claim.confidence < 0.6;
     nodes.push({
       id: `claim-${claim.id}`,
       label: claim.text.slice(0, 40) + (claim.text.length > 40 ? "…" : ""),
       type: "claim",
       conf: claim.confidence,
-      stale: claim.status === "superseded",
+      stale: isStale,
       info: {
-        subtitle: `claim · conf ${(claim.confidence * 100).toFixed(0)}%`,
+        subtitle: `claim · conf ${(claim.confidence * 100).toFixed(0)}% · round ${claim.round}`,
         desc: claim.text,
       },
     });
 
-    // Edge: Document → Claim
+    // Edge: Document → Claim (matched by source name)
     const docNode = domain.documents.find(d => d.name === claim.source);
     if (docNode) {
       edges.push({
@@ -76,59 +92,86 @@ function buildGraphData(domain: UseDomainDataResult): GraphData {
   });
 
   // ── Contradiction nodes ──────────────────────────────────────────────────────
+  // API schema: { claim_a (text), claim_b (text), source_a, source_b, severity, status }
+  // "veto" = critical severity that is still open
   domain.contradictions.forEach((contra) => {
+    const isVeto = contra.severity === "critical" && contra.status === "open";
+    const shortA = contra.claim_a.slice(0, 35) + (contra.claim_a.length > 35 ? "…" : "");
+    const shortB = contra.claim_b.slice(0, 35) + (contra.claim_b.length > 35 ? "…" : "");
     nodes.push({
       id: `contra-${contra.id}`,
-      label: `Contradiction`,
+      label: `⚡ Contradiction`,
       type: "contradiction",
-      veto: contra.veto_active,
+      veto: isVeto,
       info: {
-        subtitle: contra.veto_active ? "contradiction · VETO" : "contradiction · soft",
-        desc: contra.reason || "Conflicting claims detected",
+        subtitle: isVeto ? `contradiction · VETO · ${contra.severity}` : `contradiction · ${contra.severity} · ${contra.status}`,
+        desc: `"${shortA}" vs "${shortB}"`,
       },
     });
 
-    // Edges: Claims → Contradiction
-    contra.claim_ids.forEach((claimId) => {
-      edges.push({
-        source: `claim-${claimId}`,
-        target: `contra-${contra.id}`,
-        type: "contradicts",
-      });
-    });
+    // Edges: Claims → Contradiction (matched by text lookup)
+    const idA = claimByText.get(contra.claim_a);
+    const idB = claimByText.get(contra.claim_b);
+    if (idA) {
+      edges.push({ source: `claim-${idA}`, target: `contra-${contra.id}`, type: "contradicts" });
+    }
+    if (idB) {
+      edges.push({ source: `claim-${idB}`, target: `contra-${contra.id}`, type: "contradicts" });
+    }
+    // If no matching claims found, link by source document instead
+    if (!idA && !idB) {
+      const docA = domain.documents.find(d => d.name === contra.source_a);
+      const docB = domain.documents.find(d => d.name === contra.source_b);
+      if (docA) edges.push({ source: `doc-${docA.id}`, target: `contra-${contra.id}`, type: "contradicts" });
+      if (docB) edges.push({ source: `doc-${docB.id}`, target: `contra-${contra.id}`, type: "contradicts" });
+    }
   });
 
   // ── Risk nodes ───────────────────────────────────────────────────────────────
+  // API schema: { description, level, category, source, round }
   domain.risks.forEach((risk) => {
+    const label = risk.description.slice(0, 40) + (risk.description.length > 40 ? "…" : "");
     nodes.push({
       id: `risk-${risk.id}`,
-      label: risk.label,
+      label,
       type: "risk",
       info: {
-        subtitle: `risk · severity ${risk.severity}`,
+        subtitle: `risk · ${risk.level}${risk.category ? ` · ${risk.category}` : ""}`,
         desc: risk.description,
       },
     });
 
-    // Edges: Contributing claims → Risk
-    risk.contributing_claim_ids.forEach((claimId) => {
-      edges.push({
-        source: `claim-${claimId}`,
-        target: `risk-${risk.id}`,
-        type: "supports",
+    // Edges: Source document → Risk (matched by source name)
+    const sourceDoc = domain.documents.find(d => d.name === risk.source);
+    if (sourceDoc) {
+      edges.push({ source: `doc-${sourceDoc.id}`, target: `risk-${risk.id}`, type: "supports" });
+    }
+    // Also connect claims from same source to risk
+    domain.claims
+      .filter(c => c.source === risk.source)
+      .forEach(c => {
+        edges.push({ source: `claim-${c.id}`, target: `risk-${risk.id}`, type: "supports" });
       });
-    });
   });
 
   // ── Drift connections ────────────────────────────────────────────────────────
-  // Drifts represent detected conflicts between claims; create edges between them
+  // API schema: { claim_id (optional), subject, delta, severity }
+  // Connect the drifted claim to its drift-implicated contradiction if any
   domain.drifts.forEach((drift) => {
-    if (drift.claim_a_id && drift.claim_b_id) {
-      edges.push({
-        source: `claim-${drift.claim_a_id}`,
-        target: `claim-${drift.claim_b_id}`,
-        type: "contradicts",
-      });
+    if (drift.claim_id) {
+      // Find a contradiction involving this claim
+      const relatedContra = domain.contradictions.find(
+        contra =>
+          claimByText.get(contra.claim_a) === drift.claim_id ||
+          claimByText.get(contra.claim_b) === drift.claim_id,
+      );
+      if (relatedContra) {
+        edges.push({
+          source: `claim-${drift.claim_id}`,
+          target: `contra-${relatedContra.id}`,
+          type: "contradicts",
+        });
+      }
     }
   });
 

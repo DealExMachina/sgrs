@@ -1,12 +1,12 @@
 /**
- * Proxy /api/scopes to the backend API server (apps/api running on port 3002).
- * 
+ * Proxy /api/scopes to the backend API server (running on port 3003).
+ *
  * Bridges the frontend and backend, allowing both to run on different ports.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BACKEND = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3002";
+const API_BACKEND = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3003";
 
 export async function GET(request: NextRequest) {
   try {

@@ -28,6 +28,7 @@ import { createContradictionsRouter } from "./routes/contradictions.js";
 import { createRisksRouter } from "./routes/risks.js";
 import { createDocumentsRouter } from "./routes/documents.js";
 import { createEpochsRouter } from "./routes/epochs.js";
+import { createIngestRouter } from "./routes/ingest.js";
 import type { Db, AnalyticsDb } from "@sgrs/db";
 import type { EventsApi } from "@sgrs/client-ts";
 
@@ -90,6 +91,8 @@ export function createApp({ db, analytics, events, corsOrigins }: AppConfig) {
   api.route("/risks", createRisksRouter(db, events));
   api.route("/documents", createDocumentsRouter(db, events));
   api.route("/epochs", createEpochsRouter(db, events));
+  // Document ingestion pipeline: register → facts-worker → claims/contradictions/risks
+  api.route("/ingest", createIngestRouter(db, events));
 
   app.route("/api", api);
 

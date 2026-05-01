@@ -1,164 +1,194 @@
 import type cytoscape from "cytoscape";
 
 /**
- * DxM-themed Cytoscape stylesheet.
+ * Governance Graph — obsidian-style minimal design.
  *
- * Design principles:
- * - Labels hidden by default; toggled via the `show-label` class driven by zoom
- * - Confidence of a claim encoded as its diameter (pre-attentive)
- * - Stale claims keep their position but shift to dashed + desaturated
- * - Contradictions are diamonds, risks round-diamonds, goals hexagons
- *   (shape alone suffices to distinguish node types at any zoom)
+ * - Small nodes, dot-like at low zoom
+ * - Labels on hover only (no zoom thresholds)
+ * - Very thin, subtle edges
+ * - Contradiction edges always visible in red
+ * - Dark fills, colored borders encode type/state
  */
 export const defaultStyle: cytoscape.StylesheetStyle[] = [
+
+  // ── Base node ────────────────────────────────────────────────────────────────
   {
     selector: "node",
     style: {
       label: "data(label)",
-      color: "#c9cdd6",
+      color: "#9aa5b4",
       "font-family": "Inter, system-ui, sans-serif",
-      "font-size": 11,
-      "font-weight": 500,
+      "font-size": 10,
+      "font-weight": 400,
       "text-valign": "bottom",
-      "text-margin-y": 8,
+      "text-halign": "center",
+      "text-margin-y": 5,
       "text-wrap": "wrap",
-      "text-max-width": "120px",
-      "text-outline-color": "#0b0c0f",
+      "text-max-width": "100px",
+      "text-outline-color": "#05070a",
       "text-outline-width": 2,
       "border-width": 1,
-      "border-color": "#363b47",
+      "border-color": "#1e2535",
+      // Labels hidden by default — only shown via .hi class (hover)
       "text-opacity": 0,
-      "transition-property":
-        "text-opacity, opacity, border-color, background-color",
-      "transition-duration": 140,
+      "transition-property": "opacity, border-color, border-width, background-color, text-opacity",
+      "transition-duration": 150,
       "transition-timing-function": "ease-out",
     },
   },
+
+  // ── Document nodes ───────────────────────────────────────────────────────────
   {
-    selector: 'node[type="doc"]',
+    selector: "node[type='doc']",
     style: {
       shape: "round-rectangle",
-      "background-color": "#12141a",
-      "border-color": "#7a7f8b",
-      width: 30,
-      height: 30,
-      color: "#9aa0ac",
-      "font-size": 10.5,
+      "background-color": "#0d1018",
+      "border-color": "#2a3650",
+      "border-width": 1,
+      width: 18,
+      height: 18,
     },
   },
+
+  // ── Claim nodes ──────────────────────────────────────────────────────────────
   {
-    selector: 'node[type="claim"]',
+    selector: "node[type='claim']",
     style: {
       shape: "ellipse",
-      "background-color": "#3e6b93",
-      "border-color": "#6aa6d6",
-      "border-width": 1.5,
-      width: (n: cytoscape.NodeSingular) => 28 + (Number(n.data("conf")) || 0.5) * 22,
-      height: (n: cytoscape.NodeSingular) => 28 + (Number(n.data("conf")) || 0.5) * 22,
+      "background-color": (n: cytoscape.NodeSingular) => {
+        const c = Number(n.data("conf")) || 0.5;
+        if (c >= 0.8) return "#071a0d";
+        if (c >= 0.6) return "#07122b";
+        return "#0e0e11";
+      },
+      "border-color": (n: cytoscape.NodeSingular) => {
+        const c = Number(n.data("conf")) || 0.5;
+        if (c >= 0.8) return "#16a34a";
+        if (c >= 0.6) return "#2563eb";
+        return "#3f3f46";
+      },
+      "border-width": 1.2,
+      // Size scales gently with confidence: 14–20px
+      width: (n: cytoscape.NodeSingular) => 14 + (Number(n.data("conf")) || 0.5) * 12,
+      height: (n: cytoscape.NodeSingular) => 14 + (Number(n.data("conf")) || 0.5) * 12,
     },
   },
+
+  // Stale
   {
-    selector: 'node[type="claim"][?stale]',
-    style: {
-      "background-color": "#1b1e25",
-      "border-style": "dashed",
-      color: "#7a7f8b",
-    },
+    selector: "node[type='claim'][?stale]",
+    style: { opacity: 0.35, "border-style": "dashed" },
   },
+
+  // ── Contradiction nodes ──────────────────────────────────────────────────────
   {
-    selector: 'node[type="contradiction"]',
+    selector: "node[type='contradiction']",
     style: {
       shape: "diamond",
-      "background-color": "#12141a",
-      "border-color": "#d97a6c",
-      "border-width": 2,
-      width: 34,
-      height: 34,
-      color: "#d97a6c",
+      "background-color": (n: cytoscape.NodeSingular) =>
+        n.data("veto") ? "#180808" : "#110606",
+      "border-color": (n: cytoscape.NodeSingular) =>
+        n.data("veto") ? "#dc2626" : "#7f1d1d",
+      "border-width": (n: cytoscape.NodeSingular) =>
+        n.data("veto") ? 2 : 1.2,
+      width: 20,
+      height: 20,
     },
   },
+
+  // ── Risk nodes ───────────────────────────────────────────────────────────────
   {
-    selector: 'node[type="risk"]',
+    selector: "node[type='risk']",
     style: {
-      shape: "round-diamond",
-      "background-color": "#12141a",
-      "border-color": "#e8b765",
-      "border-width": 1.5,
-      width: 32,
-      height: 32,
-      color: "#e8b765",
+      shape: "triangle",
+      "background-color": "#100900",
+      "border-color": "#92400e",
+      "border-width": 1.2,
+      width: 20,
+      height: 20,
     },
   },
-  {
-    selector: 'node[type="goal"]',
-    style: {
-      shape: "round-hexagon",
-      "background-color": "#12141a",
-      "border-color": "#7fb98b",
-      "border-width": 1.5,
-      width: 36,
-      height: 36,
-      color: "#7fb98b",
-    },
-  },
+
+  // ── Base edge ────────────────────────────────────────────────────────────────
   {
     selector: "edge",
     style: {
-      width: 1,
+      width: 0.8,
       "curve-style": "bezier",
-      "target-arrow-shape": "triangle",
-      "arrow-scale": 0.7,
-      "line-color": "#262a33",
-      "target-arrow-color": "#262a33",
+      "target-arrow-shape": "none",   // no arrowheads by default — cleaner
+      "line-color": "#151b28",
       opacity: 0.5,
-      "transition-property": "opacity, line-color",
-      "transition-duration": 140,
+      "transition-property": "opacity, line-color, width",
+      "transition-duration": 150,
     },
   },
+
+  // Doc → Claim  (barely visible dotted)
   {
-    selector: 'edge[type="supports"]',
+    selector: "edge[type='refers']",
     style: {
-      "line-color": "#3e6b93",
-      "target-arrow-color": "#3e6b93",
-      width: 1.1,
-      opacity: 0.75,
-    },
-  },
-  {
-    selector: 'edge[type="contradicts"]',
-    style: {
-      "line-color": "#d97a6c",
-      "target-arrow-color": "#d97a6c",
+      "line-color": "#1c2438",
       "line-style": "dashed",
-      width: 1.3,
-      opacity: 0.8,
+      "line-dash-pattern": [3, 4],
+      width: 0.6,
+      opacity: 0.25,
     },
   },
+
+  // Claim → Risk
   {
-    selector: ".show-label",
-    style: { "text-opacity": 1 },
+    selector: "edge[type='supports']",
+    style: {
+      "line-color": "#14532d",
+      "target-arrow-shape": "triangle",
+      "target-arrow-color": "#14532d",
+      "arrow-scale": 0.5,
+      width: 0.9,
+      opacity: 0.55,
+    },
   },
+
+  // Contradicts — always visible, red, solid
+  {
+    selector: "edge[type='contradicts']",
+    style: {
+      "line-color": "#7f1d1d",
+      "target-arrow-shape": "triangle",
+      "target-arrow-color": "#7f1d1d",
+      "arrow-scale": 0.5,
+      "line-style": "solid",
+      width: 1.2,
+      opacity: 0.85,
+    },
+  },
+
+  // ── Hover: dim everything outside neighbourhood ───────────────────────────────
   {
     selector: ".dim",
     style: {
-      opacity: 0.14,
+      opacity: 0.06,
       "text-opacity": 0,
     },
   },
+
+  // ── Hover: highlight neighbourhood ───────────────────────────────────────────
   {
     selector: ".hi",
     style: {
-      "border-color": "#ff7a1a",
+      "border-color": "#f97316",
       "border-width": 2,
-      "text-opacity": 1,
+      "text-opacity": 1,           // label appears ONLY on hover
+      opacity: 1,
     },
   },
   {
     selector: "edge.hi",
     style: {
-      "line-color": "#ff7a1a",
-      "target-arrow-color": "#ff7a1a",
-      width: 1.6,
+      "line-color": "#f97316",
+      "target-arrow-color": "#f97316",
+      "target-arrow-shape": "triangle",
+      "arrow-scale": 0.5,
+      width: 1.5,
       opacity: 1,
     },
   },
@@ -167,14 +197,18 @@ export const defaultStyle: cytoscape.StylesheetStyle[] = [
 export const defaultLayout: cytoscape.LayoutOptions = {
   name: "cose",
   animate: false,
-  randomize: true,
-  componentSpacing: 90,
-  nodeRepulsion: 32000,
-  idealEdgeLength: 130,
-  edgeElasticity: 110,
-  gravity: 0.22,
-  numIter: 2000,
-  padding: 60,
+  avoidOverlap: true,
+  avoidOverlapPadding: 20,
+  nodeSpacing: 10,
+  directed: true,
+  edgeElasticity: 0.4,
+  nestingFactor: 0.1,
+  gravity: 0.25,
+  numIter: 2500,
+  initialTemp: 200,
+  coolingFactor: 0.95,
+  minTemp: 1.0,
+  randomize: false,
   fit: true,
-  nodeDimensionsIncludeLabels: true,
+  padding: 48,
 } as cytoscape.LayoutOptions;
