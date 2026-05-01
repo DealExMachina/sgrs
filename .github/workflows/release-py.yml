@@ -78,7 +78,10 @@ jobs:
           done
         # Note: Requires cosign private key or OIDC keyless signing
 
-      # Create git tag
-      - run: git tag -a release-py-$(date +%Y%m%d-%H%M%S) -m "PyPI release"
-      - run: git push origin main --tags
-        if: success()
+      # Annotated tags require committer identity on the runner
+      - name: Tag PyPI release on git
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -a "release-py-$(date +%Y%m%d-%H%M%S)" -m "PyPI release"
+          git push origin main --tags

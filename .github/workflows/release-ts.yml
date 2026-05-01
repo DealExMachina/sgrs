@@ -63,7 +63,10 @@ jobs:
       # Note: Full cosign signing requires keyless OIDC integration with npm registry
       # For now, packages are signed with npm provenance (OIDC) which is built-in
 
-      # Create git tag for release
-      - run: git tag -a release-ts-$(date +%Y%m%d-%H%M%S) -m "npm release"
-      - run: git push origin main --tags
-        if: success()
+      # Annotated tags require committer identity on the runner
+      - name: Tag npm release on git
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -a "release-ts-$(date +%Y%m%d-%H%M%S)" -m "npm release"
+          git push origin main --tags
