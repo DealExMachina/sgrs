@@ -43,6 +43,22 @@ jobs:
       # Verify build and tests pass before publishing
       - run: pnpm build
       - run: pnpm typecheck
+      - run: pnpm test
+
+      # Generate coverage report
+      - run: pnpm test:coverage
+
+      # Enforce coverage threshold before release
+      - name: Verify coverage meets threshold
+        run: |
+          COVERAGE=$(jq '.total.lines.pct' apps/api/coverage/coverage-summary.json)
+          MIN_COVERAGE=80
+          if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% below $MIN_COVERAGE% minimum"
+            echo "Coverage report: apps/api/coverage/index.html"
+            exit 1
+          fi
+          echo "✅ Coverage $COVERAGE% meets $MIN_COVERAGE% threshold"
 
       # Check if there are changesets to release
       - run: pnpm changeset status --since=origin/main || echo "No changesets"
