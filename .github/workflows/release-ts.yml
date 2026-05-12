@@ -45,8 +45,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-      # Generate coverage report
-      - run: pnpm test:coverage
+      # Generate coverage report for API package
+      - run: cd apps/api && pnpm test:coverage
 
       # Enforce coverage threshold before release
       - name: Verify coverage meets threshold
