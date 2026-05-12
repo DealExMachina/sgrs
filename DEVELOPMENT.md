@@ -303,6 +303,27 @@ Tests validate:
 - Finality status fetching
 - Claims/drifts/contradictions/risks listing
 
+### Test Coverage
+
+Generate coverage reports locally:
+
+```bash
+pnpm test:coverage  # Generates coverage report for all packages
+```
+
+Coverage thresholds are enforced:
+- **Lines**: 80%
+- **Functions**: 80%
+- **Statements**: 80%
+- **Branches**: 75%
+
+Coverage reports are automatically:
+1. Generated on every test run via `pnpm test:coverage`
+2. Uploaded to Codecov in CI for tracking trends
+3. Available in HTML format at `apps/*/coverage/index.html` for local review
+
+Branches with coverage below thresholds will fail CI. Review coverage reports to identify untested code paths.
+
 ## Performance Notes
 
 - **ScopeCounter**: useRef pattern avoids double-render on value change

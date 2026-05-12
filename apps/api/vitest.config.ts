@@ -14,5 +14,20 @@ export default defineConfig({
       ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // 32 zero bytes, base64
       NODE_ENV: "test",
     },
+    // Coverage reporting
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      exclude: [
+        "node_modules/",
+        "dist/",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+      ],
+      lines: 80,
+      functions: 80,
+      branches: 75,
+      statements: 80,
+    },
   },
 });

@@ -55,6 +55,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - run: pnpm test:coverage
+        # Generate coverage report for quality tracking
+      - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./apps/*/coverage/coverage-final.json
+          fail_ci_if_error: false
+          verbose: true
 
   docs:
     name: Docs (OpenAPI + TypeDoc)
