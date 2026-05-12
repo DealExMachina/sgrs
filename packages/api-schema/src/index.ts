@@ -3,7 +3,8 @@ import { z } from "zod";
 /**
  * SGRS API — Zod schemas.
  *
- * These schemas are the single source of truth for the REST surface.
+ * These schemas and the sibling openapi.json are the single source of truth
+ * for the REST surface.
  * They are consumed by:
  *   - apps/studio          (validation in route handlers)
  *   - packages/client-ts   (type generation)
@@ -348,3 +349,4 @@ export type AddEpochCommentBody = z.infer<typeof AddEpochCommentBody>;
 
 /** Placeholder — full OpenAPI spec lives at packages/api-schema/openapi.json. */
 export const API_VERSION = "v1";
+export const OPENAPI_SPEC_PATH = "packages/api-schema/openapi.json";

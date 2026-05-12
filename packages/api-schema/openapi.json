@@ -3,44 +3,66 @@
   "info": {
     "title": "SGRS API",
     "version": "0.1.0",
-    "description": "Versioned REST contract for SGRS product APIs and the headless swarm integration boundary."
+    "description": "Canonical OpenAPI contract for SGRS API tiers. Public routes live under /api, admin routes under /admin, and internal godlike routes under /internals."
   },
   "servers": [
     {
-      "url": "http://localhost:3003",
+      "url": "http://localhost:3001",
       "description": "Local SGRS API"
     }
   ],
+  "tags": [
+    {
+      "name": "public",
+      "description": "Tenant-facing public API routes."
+    },
+    {
+      "name": "admin",
+      "description": "Admin control surface. Requires admin or godlike key."
+    },
+    {
+      "name": "internals",
+      "description": "Godlike-only operational and kernel internals routes."
+    }
+  ],
   "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getApiHealth",
+        "summary": "Public health check",
+        "tags": ["public"],
+        "responses": {
+          "200": {
+            "description": "API is reachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ingest": {
       "post": {
         "summary": "Queue a document for the headless governed swarm",
         "operationId": "ingestDocument",
+        "tags": ["public"],
         "parameters": [
           {
             "name": "X-Tenant-ID",
             "in": "header",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestDocumentRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/IngestDocumentRequest" }
             }
           }
         },
@@ -49,18 +71,539 @@
             "description": "Document queued for asynchronous swarm processing",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IngestDocumentResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/IngestDocumentResponse" }
               }
             }
           }
         }
       }
+    },
+    "/admin/health": {
+      "get": {
+        "operationId": "getAdminHealth",
+        "summary": "Admin tier health",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Admin tier healthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TierHealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/control-plane/health": {
+      "get": {
+        "operationId": "getAdminControlPlaneHealth",
+        "summary": "Kernel control-plane health through admin proxy",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Control-plane reachable" }
+        }
+      }
+    },
+    "/admin/tenants": {
+      "post": {
+        "operationId": "createAdminTenant",
+        "summary": "Create tenant and first key",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTenantRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tenant created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateTenantResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/scopes": {
+      "get": {
+        "operationId": "listAdminScopes",
+        "summary": "List scopes for a tenant key",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Scopes listed" }
+        }
+      },
+      "post": {
+        "operationId": "createAdminScope",
+        "summary": "Create scope for a tenant key",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Scope created" }
+        }
+      }
+    },
+    "/admin/scopes/{scopeId}/documents": {
+      "post": {
+        "operationId": "adminAddScopeDocument",
+        "summary": "Attach document to scope",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "201": { "description": "Document accepted" } }
+      }
+    },
+    "/admin/scopes/{scopeId}/ingest": {
+      "post": {
+        "operationId": "adminIngestScopeDocuments",
+        "summary": "Trigger ingest for scope documents",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Ingest triggered" } }
+      }
+    },
+    "/admin/scopes/{scopeId}/summary": {
+      "get": {
+        "operationId": "adminGetScopeSummary",
+        "summary": "Get scope summary",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Summary returned" } }
+      }
+    },
+    "/admin/scopes/{scopeId}/metrics": {
+      "get": {
+        "operationId": "adminGetScopeMetrics",
+        "summary": "Get scope metrics",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Metrics returned" } }
+      }
+    },
+    "/admin/scopes/{scopeId}/events": {
+      "get": {
+        "operationId": "adminStreamScopeEvents",
+        "summary": "Stream scope events",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "SSE stream established" } }
+      }
+    },
+    "/admin/scopes/{scopeId}/reset": {
+      "post": {
+        "operationId": "adminResetScope",
+        "summary": "Reset scope data",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Scope reset complete" } }
+      }
+    },
+    "/admin/runtime/start": {
+      "post": {
+        "operationId": "adminRuntimeStart",
+        "summary": "Start runtime for a scope",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Runtime started" } }
+      }
+    },
+    "/admin/runtime/pause": {
+      "post": {
+        "operationId": "adminRuntimePause",
+        "summary": "Pause runtime",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Runtime paused" } }
+      }
+    },
+    "/admin/runtime/resume": {
+      "post": {
+        "operationId": "adminRuntimeResume",
+        "summary": "Resume runtime",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Runtime resumed" } }
+      }
+    },
+    "/admin/runtime/stop": {
+      "post": {
+        "operationId": "adminRuntimeStop",
+        "summary": "Stop runtime",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Runtime stopped" } }
+      }
+    },
+    "/admin/runtime/restart": {
+      "post": {
+        "operationId": "adminRuntimeRestart",
+        "summary": "Restart runtime for a scope",
+        "tags": ["admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": { "200": { "description": "Runtime restarted" } }
+      }
+    },
+    "/internals/health": {
+      "get": {
+        "operationId": "getInternalsHealth",
+        "summary": "Godlike tier health",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": {
+          "200": {
+            "description": "Internals tier healthy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TierHealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internals/kernel/health": {
+      "get": {
+        "operationId": "getInternalsKernelHealth",
+        "summary": "Kernel feed health",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": { "200": { "description": "Kernel feed reachable" } }
+      }
+    },
+    "/internals/kernel/hatchery/snapshot": {
+      "get": {
+        "operationId": "getInternalsHatcherySnapshot",
+        "summary": "Fetch hatchery snapshot",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": { "200": { "description": "Snapshot returned" } }
+      }
+    },
+    "/internals/events": {
+      "get": {
+        "operationId": "streamInternalsEventsLegacy",
+        "summary": "Legacy internals events stream alias",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "deprecated": true,
+        "responses": { "200": { "description": "SSE stream established" } }
+      }
+    },
+    "/internals/convergence": {
+      "get": {
+        "operationId": "getInternalsConvergenceLegacy",
+        "summary": "Legacy internals convergence alias",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "deprecated": true,
+        "responses": { "200": { "description": "Convergence payload returned" } }
+      }
+    },
+    "/internals/hatchery/snapshot": {
+      "get": {
+        "operationId": "getInternalsHatcherySnapshotLegacy",
+        "summary": "Legacy internals hatchery snapshot alias",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "deprecated": true,
+        "responses": { "200": { "description": "Snapshot returned" } }
+      }
+    },
+    "/internals/control-plane/health": {
+      "get": {
+        "operationId": "getInternalsControlPlaneHealthLegacy",
+        "summary": "Legacy internals control-plane health alias",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "deprecated": true,
+        "responses": { "200": { "description": "Control-plane reachable" } }
+      }
+    },
+    "/internals/kernel/events": {
+      "get": {
+        "operationId": "streamInternalsKernelEvents",
+        "summary": "Stream kernel events",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": { "200": { "description": "SSE stream established" } }
+      }
+    },
+    "/internals/kernel/convergence": {
+      "get": {
+        "operationId": "getInternalsKernelConvergence",
+        "summary": "Get kernel convergence payload",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": { "200": { "description": "Convergence payload returned" } }
+      }
+    },
+    "/internals/kernel/control-plane/health": {
+      "get": {
+        "operationId": "getInternalsKernelControlPlaneHealth",
+        "summary": "Get kernel control-plane health",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "responses": { "200": { "description": "Control-plane reachable" } }
+      }
+    },
+    "/internals/kernel/runtime/start": {
+      "post": {
+        "operationId": "internalsRuntimeStart",
+        "summary": "Godlike runtime start",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Runtime started" } }
+      }
+    },
+    "/internals/kernel/runtime/pause": {
+      "post": {
+        "operationId": "internalsRuntimePause",
+        "summary": "Godlike runtime pause",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Runtime paused" } }
+      }
+    },
+    "/internals/kernel/runtime/resume": {
+      "post": {
+        "operationId": "internalsRuntimeResume",
+        "summary": "Godlike runtime resume",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Runtime resumed" } }
+      }
+    },
+    "/internals/kernel/runtime/stop": {
+      "post": {
+        "operationId": "internalsRuntimeStop",
+        "summary": "Godlike runtime stop",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Runtime stopped" } }
+      }
+    },
+    "/internals/kernel/runtime/restart": {
+      "post": {
+        "operationId": "internalsRuntimeRestart",
+        "summary": "Godlike runtime restart",
+        "tags": ["internals"],
+        "security": [{ "BearerAuth": [] }],
+        "x-internal": true,
+        "parameters": [
+          {
+            "name": "X-Tenant-API-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "Runtime restarted" } }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
     "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "TierHealthResponse": {
+        "type": "object",
+        "required": ["status", "tier"],
+        "properties": {
+          "status": { "type": "string" },
+          "tier": { "type": "string" },
+          "authTier": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "CreateTenantRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTenantResponse": {
+        "type": "object",
+        "required": ["tenant_id", "api_key", "key_prefix", "message"],
+        "properties": {
+          "tenant_id": { "type": "string" },
+          "api_key": { "type": "string" },
+          "key_prefix": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
       "ScopeId": {
         "type": "string",
         "minLength": 1,
@@ -71,39 +614,13 @@
         "type": "object",
         "required": ["scope_id", "name", "text"],
         "properties": {
-          "scope_id": {
-            "$ref": "#/components/schemas/ScopeId"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          },
-          "type": {
-            "type": "string",
-            "maxLength": 50,
-            "default": "txt"
-          },
-          "text": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100000
-          },
-          "document_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "source": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          },
-          "idempotency_key": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          }
+          "scope_id": { "$ref": "#/components/schemas/ScopeId" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "type": { "type": "string", "maxLength": 50, "default": "txt" },
+          "text": { "type": "string", "minLength": 1, "maxLength": 100000 },
+          "document_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "source": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 200 }
         },
         "additionalProperties": false
       },
@@ -121,37 +638,15 @@
           "message"
         ],
         "properties": {
-          "scope_id": {
-            "$ref": "#/components/schemas/ScopeId"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          },
-          "type": {
-            "type": "string",
-            "maxLength": 50
-          },
-          "document_id": {
-            "type": ["string", "null"]
-          },
-          "idempotency_key": {
-            "type": ["string", "null"]
-          },
-          "queued": {
-            "const": true
-          },
-          "seq": {
-            "type": ["integer", "null"],
-            "minimum": 0
-          },
-          "integration_version": {
-            "const": "v1"
-          },
-          "message": {
-            "type": "string"
-          }
+          "scope_id": { "$ref": "#/components/schemas/ScopeId" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "type": { "type": "string", "maxLength": 50 },
+          "document_id": { "type": ["string", "null"] },
+          "idempotency_key": { "type": ["string", "null"] },
+          "queued": { "const": true },
+          "seq": { "type": ["integer", "null"], "minimum": 0 },
+          "integration_version": { "const": "v1" },
+          "message": { "type": "string" }
         },
         "additionalProperties": false
       }
