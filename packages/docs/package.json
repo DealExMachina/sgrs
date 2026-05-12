@@ -13,7 +13,7 @@
     "@sgrs/client-ts": "workspace:*"
   },
   "devDependencies": {
-    "@redocly/cli": "^2.14.0",
+    "@redocly/cli": "^2.30.5",
     "typedoc": "^0.28.16",
     "typescript": "5.9.3"
   },

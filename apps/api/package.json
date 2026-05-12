@@ -16,13 +16,13 @@
     "lint": "echo 'lint skipped'"
   },
   "dependencies": {
-    "@hono/node-server": "2.0.1",
-    "@hono/zod-validator": "0.7.6",
+    "@hono/node-server": "2.0.2",
+    "@hono/zod-validator": "0.8.0",
     "@sgrs/api-schema": "workspace:*",
     "@sgrs/client-ts": "workspace:*",
     "@sgrs/db": "workspace:*",
     "drizzle-orm": "0.45.2",
-    "hono": "4.12.16",
+    "hono": "4.12.18",
     "zod": "^4.4.1"
   },
   "devDependencies": {
