@@ -16,7 +16,7 @@ pnpm add @sgrs/client-ts
 import { createClient } from '@sgrs/client-ts';
 
 const client = createClient({
-  baseUrl: 'http://localhost:3000',
+  baseUrl: 'http://localhost:3003',
   apiKey: 'optional-api-key',
 });
 
@@ -41,7 +41,7 @@ if (result.ok) {
 
 ```typescript
 const client = createClient({
-  baseUrl: 'http://localhost:3000',
+  baseUrl: 'http://localhost:3003',
   apiKey: 'your-api-key',
   timeout: 30000, // 30 seconds
   fetch: customFetch, // optional custom fetch implementation

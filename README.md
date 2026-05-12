@@ -36,9 +36,11 @@ Generated reference: run `pnpm docs` (OpenAPI + TypeDoc) and `pnpm docs:py` (Sph
 
 Prereqs: Node 20.19+, pnpm 9.15+, Python 3.11+ (for `client-py`).
 
+**Ports:** Studio listens on **3001**; API on **3003** by default (see [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md)). Published SDKs should use `baseUrl: 'http://localhost:3003'` against a local API, not port 3000 (reserved by OpenFGA in the full swarm compose stack).
+
 ```bash
 pnpm install
-pnpm dev   # Turbo: Studio on :3001; API uses PORT from .env.local — use 3003 to match proxies (see docs)
+pnpm dev   # Turbo: Studio :3001; API uses PORT from .env.local (template: PORT=3003)
 ```
 
 ## Documentation

@@ -12,7 +12,7 @@
  *   DATABASE_URL      — Drizzle target (PGlite file or postgresql:// URL)
  *   DUCKDB_PATH       — DuckDB analytics file path (default: :memory:)
  *   ENCRYPTION_KEY    — Base64-encoded 32-byte AES-256-GCM key (REQUIRED)
- *   PORT              — HTTP port (default: 3001)
+ *   PORT              — HTTP port (default: 3001 if unset; use 3003 with Studio — see ROUTING_ARCHITECTURE.md)
  *   API_KEY           — Bearer token (optional; disables auth if unset)
  *   CORS_ORIGINS      — Comma-separated allowed origins
  *   NODE_ENV          — "production" | "development" (default: development)

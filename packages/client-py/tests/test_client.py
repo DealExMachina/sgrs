@@ -20,13 +20,13 @@ from sgrs_client.schema import (
 @pytest.fixture
 def client():
     """Create a test client."""
-    return Client(base_url="http://localhost:3000")
+    return Client(base_url="http://localhost:3003")
 
 
 @pytest.fixture
 def client_with_key():
     """Create a test client with API key."""
-    return Client(base_url="http://localhost:3000", api_key="test-key")
+    return Client(base_url="http://localhost:3003", api_key="test-key")
 
 
 class TestClientInitialization:
@@ -34,27 +34,27 @@ class TestClientInitialization:
 
     def test_init_with_base_url(self):
         """Test initialization with base URL."""
-        client = Client(base_url="http://localhost:3000")
-        assert client.base_url == "http://localhost:3000"
+        client = Client(base_url="http://localhost:3003")
+        assert client.base_url == "http://localhost:3003"
 
     def test_init_strips_trailing_slash(self):
         """Test that trailing slash is removed from base URL."""
-        client = Client(base_url="http://localhost:3000/")
-        assert client.base_url == "http://localhost:3000"
+        client = Client(base_url="http://localhost:3003/")
+        assert client.base_url == "http://localhost:3003"
 
     def test_init_with_api_key(self):
         """Test initialization with API key."""
-        client = Client(base_url="http://localhost:3000", api_key="test-key")
+        client = Client(base_url="http://localhost:3003", api_key="test-key")
         assert client.api_key == "test-key"
 
     def test_init_with_custom_timeout(self):
         """Test initialization with custom timeout."""
-        client = Client(base_url="http://localhost:3000", timeout=60.0)
+        client = Client(base_url="http://localhost:3003", timeout=60.0)
         assert client.timeout == 60.0
 
     def test_init_with_ssl_verification_disabled(self):
         """Test initialization with SSL verification disabled."""
-        client = Client(base_url="http://localhost:3000", verify_ssl=False)
+        client = Client(base_url="http://localhost:3003", verify_ssl=False)
         assert client._verify_ssl is False
 
 
@@ -98,7 +98,7 @@ class TestScopeOperations:
         with patch.object(
             Client, "_async_request", return_value=Mock(ok=True, data=Scope(**scope_data))
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.get_scope("test-scope")
 
             assert result.ok is True
@@ -110,7 +110,7 @@ class TestScopeOperations:
         with patch.object(
             Client, "_async_request", return_value=Mock(ok=True, data=Mock())
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.create_scope(
                 name="New Scope", tag="new", state="active", score=0.5, cycles=0
             )
@@ -123,7 +123,7 @@ class TestScopeOperations:
         with patch.object(
             Client, "_async_request", return_value=Mock(ok=True, data=Mock())
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.update_scope("test-scope", score=0.75)
 
             assert result.ok is True
@@ -148,7 +148,7 @@ class TestModelOperations:
             "_async_request",
             return_value=Mock(ok=True, data=ModelHandle(**model_data)),
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.connect_model(
                 Mock(
                     provider="openai",
@@ -166,7 +166,7 @@ class TestModelOperations:
         with patch.object(
             Client, "_async_request", return_value=Mock(ok=True, data=Mock())
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.get_model("mh_test")
 
             assert result.ok is True
@@ -199,7 +199,7 @@ class TestFinalityOperations:
             "_async_request",
             return_value=Mock(ok=True, data=FinalityStatus(**status_data)),
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.get_finality_status("test-scope")
 
             assert result.ok is True
@@ -211,7 +211,7 @@ class TestFinalityOperations:
         with patch.object(
             Client, "_async_request", return_value=Mock(ok=True, data=Mock())
         ) as mock_request:
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             result = await client.get_finality_certificate("test-scope", 1)
 
             assert result.ok is True
@@ -222,14 +222,14 @@ class TestContextManagers:
 
     def test_sync_context_manager(self):
         """Test sync context manager."""
-        with Client(base_url="http://localhost:3000") as client:
-            assert client.base_url == "http://localhost:3000"
+        with Client(base_url="http://localhost:3003") as client:
+            assert client.base_url == "http://localhost:3003"
 
     @pytest.mark.asyncio
     async def test_async_context_manager(self):
         """Test async context manager."""
-        async with Client(base_url="http://localhost:3000") as client:
-            assert client.base_url == "http://localhost:3000"
+        async with Client(base_url="http://localhost:3003") as client:
+            assert client.base_url == "http://localhost:3003"
 
         # Client should be closed after exiting context
         assert True  # No exception raised
@@ -241,7 +241,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_network_error(self):
         """Test handling of network errors."""
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(
             client, "_async_client", Mock(request=AsyncMock(side_effect=Exception("Network error")))
@@ -254,7 +254,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_http_error(self):
         """Test handling of HTTP errors."""
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         error_response = Mock(
             status_code=404, json=Mock(return_value={"code": "NOT_FOUND", "message": "Not found"})
@@ -275,21 +275,21 @@ class TestCreateClientFunction:
 
     def test_create_client_with_base_url(self):
         """Test creating client with base URL."""
-        client = create_client(base_url="http://localhost:3000")
+        client = create_client(base_url="http://localhost:3003")
         assert isinstance(client, Client)
-        assert client.base_url == "http://localhost:3000"
+        assert client.base_url == "http://localhost:3003"
 
     def test_create_client_with_api_key(self):
         """Test creating client with API key."""
         client = create_client(
-            base_url="http://localhost:3000", api_key="test-key"
+            base_url="http://localhost:3003", api_key="test-key"
         )
         assert client.api_key == "test-key"
 
     def test_create_client_with_custom_timeout(self):
         """Test creating client with custom timeout."""
         client = create_client(
-            base_url="http://localhost:3000", timeout=60.0
+            base_url="http://localhost:3003", timeout=60.0
         )
         assert client.timeout == 60.0
 

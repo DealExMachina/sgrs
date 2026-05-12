@@ -116,7 +116,7 @@ mockFetch.mockResolvedValueOnce({
 });
 
 const client = new Client({
-  baseUrl: "http://localhost:3000",
+  baseUrl: "http://localhost:3003",
   fetch: mockFetch,
 });
 ```

@@ -85,7 +85,7 @@ export interface ApiResponse<T> {
  * defined in @sgrs/api-schema, ensuring type safety and runtime validation.
  *
  * Usage:
- *   const client = new Client({ baseUrl: 'http://localhost:3000' });
+ *   const client = new Client({ baseUrl: 'http://localhost:3003' });
  *   const scopes = await client.scopes.list();
  *   const scope = await client.scopes.get('my-scope');
  */

@@ -96,7 +96,7 @@ class TestLatencyZeroDelay:
         """Measure latency for getting a scope."""
 
         async def get_scope():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -113,7 +113,7 @@ class TestLatencyZeroDelay:
         """Measure latency for listing scopes."""
 
         async def list_scopes():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -130,7 +130,7 @@ class TestLatencyZeroDelay:
         """Measure latency for creating a scope."""
 
         async def create_scope():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -149,7 +149,7 @@ class TestLatencyZeroDelay:
         """Measure latency for updating a scope."""
 
         async def update_scope():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -166,7 +166,7 @@ class TestLatencyZeroDelay:
         """Measure latency for connecting a model."""
 
         async def connect_model():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -190,7 +190,7 @@ class TestLatencyZeroDelay:
         """Measure latency for getting finality status."""
 
         async def get_finality():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -211,7 +211,7 @@ class TestLatencyWithNetworkDelay:
         """Measure latency for getting a scope with 50ms network delay."""
 
         async def get_scope_delayed():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -230,7 +230,7 @@ class TestLatencyWithNetworkDelay:
         """Measure latency for creating a scope with 50ms network delay."""
 
         async def create_scope_delayed():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -253,7 +253,7 @@ class TestThroughput:
         """Measure throughput for 100 sequential GET requests."""
 
         async def sequential_gets():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -271,7 +271,7 @@ class TestThroughput:
         """Measure throughput for 10 complete CRUD cycles."""
 
         async def crud_cycles():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -301,7 +301,7 @@ class TestConcurrency:
         """Measure performance of 5 concurrent GET requests."""
 
         async def concurrent_5():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -323,7 +323,7 @@ class TestConcurrency:
         """Measure performance of 10 concurrent GET requests."""
 
         async def concurrent_10():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -347,7 +347,7 @@ class TestConcurrency:
         """Measure performance of 20 concurrent mixed operations."""
 
         async def concurrent_mixed():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
 
             async def mock_request(method, url, **kwargs):
                 if "finality" in url:
@@ -377,7 +377,7 @@ class TestMemoryEfficiency:
 
         def create_clients():
             for _ in range(1000):
-                Client(base_url="http://localhost:3000")
+                Client(base_url="http://localhost:3003")
 
         benchmark.pedantic(create_clients, rounds=5, iterations=1)
 
@@ -401,7 +401,7 @@ class TestErrorHandling:
         """Measure overhead of handling 404 errors."""
 
         async def handle_404():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",
@@ -421,7 +421,7 @@ class TestErrorHandling:
         """Measure overhead of handling 500 errors."""
 
         async def handle_500():
-            client = Client(base_url="http://localhost:3000")
+            client = Client(base_url="http://localhost:3003")
             with patch.object(
                 client._async_client,
                 "request",

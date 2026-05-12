@@ -53,7 +53,7 @@ class Client:
 
     Minimal async example (HTTP only, no ``nats-py``)::
 
-        client = Client(base_url='http://localhost:3000')
+        client = Client(base_url='http://localhost:3003')
         scope = await client.get_scope('my-scope')
 
     With NATS real-time events (install ``pip install 'sgrs-client[nats]'``)::
@@ -61,7 +61,7 @@ class Client:
         from sgrs_client.events import NatsConfig
 
         client = Client(
-            base_url='http://localhost:3000',
+            base_url='http://localhost:3003',
             nats=NatsConfig(servers='nats://localhost:4222'),
         )
         await client.connect()
@@ -86,7 +86,7 @@ class Client:
         """Initialize the SGRS client.
 
         Args:
-            base_url:   Base URL of the SGRS API (e.g., http://localhost:3000)
+            base_url:   Base URL of the SGRS API (e.g., http://localhost:3003)
             api_key:    Optional API key for Authorization: Bearer header
             timeout:    HTTP request timeout in seconds (default: 30)
             verify_ssl: Verify SSL certificates (default: True)

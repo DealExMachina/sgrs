@@ -14,7 +14,7 @@ describe("Client", () => {
   beforeEach(() => {
     mockFetch = vi.fn();
     client = new Client({
-      baseUrl: "http://localhost:3000",
+      baseUrl: "http://localhost:3003",
       fetch: mockFetch,
       timeout: 5000,
     });
@@ -27,15 +27,15 @@ describe("Client", () => {
 
     it("should accept optional apiKey", () => {
       const clientWithKey = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         apiKey: "test-key",
       });
       expect(clientWithKey).toBeDefined();
     });
 
     it("should normalize baseUrl by removing trailing slash", () => {
-      const client1 = new Client({ baseUrl: "http://localhost:3000/" });
-      const client2 = new Client({ baseUrl: "http://localhost:3000" });
+      const client1 = new Client({ baseUrl: "http://localhost:3003/" });
+      const client2 = new Client({ baseUrl: "http://localhost:3003" });
       // Both should work the same way
       expect(client1).toBeDefined();
       expect(client2).toBeDefined();
@@ -97,7 +97,7 @@ describe("Client", () => {
 
     it("should handle request timeout", async () => {
       const timeoutClient = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         timeout: 100,
         fetch: (async (_url: string | URL | Request, opts?: RequestInit) => {
           await new Promise((resolve, reject) => {
@@ -141,7 +141,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/scopes/test-scope",
+        "http://localhost:3003/api/scopes/test-scope",
         expect.objectContaining({
           method: "GET",
         })
@@ -195,7 +195,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/scopes",
+        "http://localhost:3003/api/scopes",
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({
@@ -219,7 +219,7 @@ describe("Client", () => {
       await client.scopes.patch("test-scope", { score: 0.75 });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/scopes/test-scope",
+        "http://localhost:3003/api/scopes/test-scope",
         expect.objectContaining({
           method: "PATCH",
           body: expect.stringContaining('"score":0.75'),
@@ -241,7 +241,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/scopes/test-scope",
+        "http://localhost:3003/api/scopes/test-scope",
         expect.objectContaining({
           method: "DELETE",
         })
@@ -272,7 +272,7 @@ describe("Client", () => {
 
       expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/models",
+        "http://localhost:3003/api/models",
         expect.objectContaining({
           method: "POST",
         })
@@ -414,7 +414,7 @@ describe("Client", () => {
       expect(result.ok).toBe(true);
       expect(result.status).toBe(202);
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/ingest",
+        "http://localhost:3003/api/ingest",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -434,7 +434,7 @@ describe("Client", () => {
   describe("request headers", () => {
     it("should include Authorization header when apiKey is set", async () => {
       const clientWithKey = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         apiKey: "test-api-key",
         fetch: mockFetch,
       });
@@ -483,7 +483,7 @@ describe("Client", () => {
 
 describe("createClient", () => {
   it("should create a client instance", () => {
-    const client = createClient({ baseUrl: "http://localhost:3000" });
+    const client = createClient({ baseUrl: "http://localhost:3003" });
     expect(client).toBeInstanceOf(Client);
   });
 

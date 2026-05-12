@@ -39,7 +39,7 @@ describe("Client Performance Benchmarks", () => {
   describe("Latency - Zero network delay", () => {
     bench("GET /scopes (list)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.scopes.list();
@@ -47,7 +47,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("GET /scopes/{id} (get)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.scopes.get("test-scope");
@@ -55,7 +55,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("POST /scopes (create)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.scopes.create({
@@ -69,7 +69,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("PATCH /scopes/{id} (patch)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.scopes.patch("test-scope", { score: 0.75 });
@@ -77,7 +77,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("DELETE /scopes/{id} (delete)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.scopes.delete("test-scope");
@@ -85,7 +85,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("GET /finality/{id} (finality status)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.finality.status("test-scope");
@@ -93,7 +93,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("POST /models/connect (connect model)", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
       await client.models.connect({
@@ -107,7 +107,7 @@ describe("Client Performance Benchmarks", () => {
   describe("Latency - Simulated network (50ms)", () => {
     bench("GET /scopes (list) + 50ms network", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(50),
       });
       await client.scopes.list();
@@ -115,7 +115,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("GET /scopes/{id} (get) + 50ms network", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(50),
       });
       await client.scopes.get("test-scope");
@@ -123,7 +123,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("POST /scopes (create) + 50ms network", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(50),
       });
       await client.scopes.create({
@@ -139,7 +139,7 @@ describe("Client Performance Benchmarks", () => {
   describe("Throughput - Multiple sequential requests", () => {
     bench("100 sequential GET requests", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
 
@@ -150,7 +150,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("10 sequential scope CRUD cycles", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
 
@@ -172,7 +172,7 @@ describe("Client Performance Benchmarks", () => {
   describe("Concurrent requests", () => {
     bench("5 concurrent GET requests", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
 
@@ -187,7 +187,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("10 concurrent GET requests", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
 
@@ -200,7 +200,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("20 concurrent mixed operations", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: createMockFetch(0),
       });
 
@@ -223,7 +223,7 @@ describe("Client Performance Benchmarks", () => {
     bench("Create 1000 client instances", () => {
       for (let i = 0; i < 1000; i++) {
         new Client({
-          baseUrl: "http://localhost:3000",
+          baseUrl: "http://localhost:3003",
           fetch: createMockFetch(0),
         });
       }
@@ -248,7 +248,7 @@ describe("Client Performance Benchmarks", () => {
   describe("Error handling overhead", () => {
     bench("Handle 404 error response", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: async (_url: string | URL | Request, _opts?: RequestInit) =>
           new Response(JSON.stringify({ code: "NOT_FOUND", message: "Scope not found" }), {
             status: 404,
@@ -261,7 +261,7 @@ describe("Client Performance Benchmarks", () => {
 
     bench("Handle timeout error", async () => {
       const client = new Client({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         timeout: 1,
         fetch: async (_url: string | URL | Request, opts?: RequestInit) => {
           await new Promise((resolve, reject) => {

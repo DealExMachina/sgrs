@@ -10,8 +10,8 @@
  * const scopes = await api.scopes.list();
  * ```
  *
- * Environment variables consumed:
- *   NEXT_PUBLIC_API_URL      — Base URL of the API server (default: http://localhost:3001)
+ * Environment variables consumed (browser client; base URL is usually the Studio origin so calls go through `/api/*`):
+ *   NEXT_PUBLIC_API_URL      — Default base URL for API requests (default: http://localhost:3001)
  *   NEXT_PUBLIC_TENANT_ID    — Default tenant (overrideable per-call)
  */
 
@@ -43,7 +43,7 @@ type ApiIngestDocumentResponse = z.infer<typeof IngestDocumentResponse>;
 export interface ApiClientConfig {
   /** Tenant ID sent as X-Tenant-ID header on every request. */
   tenantId: string;
-  /** API base URL. Defaults to NEXT_PUBLIC_API_URL or http://localhost:3001. */
+  /** Base URL for API requests (typically Studio origin :3001 so traffic uses the proxy). */
   baseUrl?: string;
   /** Bearer token for auth. Defaults to NEXT_PUBLIC_API_KEY env var if set. */
   apiKey?: string;

@@ -17,7 +17,7 @@ import asyncio
 from sgrs_client import create_client
 
 async def main():
-    client = create_client(base_url='http://localhost:3000')
+    client = create_client(base_url='http://localhost:3003')
     
     # Get a scope
     response = await client.get_scope('my-scope')
@@ -36,7 +36,7 @@ asyncio.run(main())
 ```python
 from sgrs_client import create_client
 
-client = create_client(base_url='http://localhost:3000')
+client = create_client(base_url='http://localhost:3003')
 
 # Get a scope
 response = client.get_scope_sync('my-scope')
@@ -55,7 +55,7 @@ import asyncio
 from sgrs_client import create_client
 
 async def main():
-    async with create_client(base_url='http://localhost:3000') as client:
+    async with create_client(base_url='http://localhost:3003') as client:
         response = await client.get_scope('my-scope')
         print(response.data if response.ok else response.error)
 

@@ -73,7 +73,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -138,7 +138,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -217,7 +217,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -257,7 +257,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -281,7 +281,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -311,7 +311,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -332,7 +332,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 
@@ -360,7 +360,7 @@ describe("Client Integration Tests", () => {
       });
 
       const client = createClient({
-        baseUrl: "http://localhost:3000",
+        baseUrl: "http://localhost:3003",
         fetch: mockFetch,
       });
 

@@ -7,7 +7,7 @@
  * ```ts
  * import { createClient } from '@sgrs/client-ts';
  *
- * const client = createClient({ baseUrl: 'http://localhost:3000' });
+ * const client = createClient({ baseUrl: 'http://localhost:3003' });
  * const result = await client.scopes.list();
  * ```
  *
@@ -16,7 +16,7 @@
  * import { createClient } from '@sgrs/client-ts';
  *
  * const client = createClient({
- *   baseUrl: 'http://localhost:3000',
+ *   baseUrl: 'http://localhost:3003',
  *   nats: { servers: 'nats://localhost:4222' },
  * });
  * await client.connect();

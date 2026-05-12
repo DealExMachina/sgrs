@@ -65,7 +65,7 @@ class TestScopeManagementWorkflow:
                 return MockHTTPResponse(204, None)
             return MockHTTPResponse(404, {"error": "Not found"})
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             # Test getting scope
@@ -109,7 +109,7 @@ class TestModelManagementWorkflow:
                 return MockHTTPResponse(204, None)
             return MockHTTPResponse(404, {"error": "Not found"})
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             # Test getting model
@@ -158,7 +158,7 @@ class TestFinalityCertificateWorkflow:
                 return MockHTTPResponse(200, certificate_data)
             return MockHTTPResponse(404, {"error": "Not found"})
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             # Test getting finality status
@@ -188,7 +188,7 @@ class TestErrorHandling:
                 },
             )
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             result = await client.get_scope("nonexistent")
@@ -208,7 +208,7 @@ class TestErrorHandling:
                 },
             )
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             result = await client.create_scope(name="x", tag="test")
@@ -227,7 +227,7 @@ class TestErrorHandling:
                 },
             )
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             result = await client.get_finality_status("test-scope")
@@ -254,7 +254,7 @@ class TestSyncOperations:
         def mock_request(method, url, **kwargs):
             return MockHTTPResponse(200, scope_data)
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._sync_client, "request", new=mock_request):
             result = client.get_scope_sync("test-scope")
@@ -277,7 +277,7 @@ class TestSyncOperations:
         def mock_request(method, url, **kwargs):
             return MockHTTPResponse(200, updated_scope_data)
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._sync_client, "request", new=mock_request):
             result = client.update_scope_sync("test-scope", score=0.75)
@@ -295,7 +295,7 @@ class TestEdgeCases:
                 return MockHTTPResponse(204, None)
             return MockHTTPResponse(404, {"error": "Not found"})
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             result = await client._async_request("DELETE", "/api/v1/scopes/test", Scope)
@@ -323,7 +323,7 @@ class TestEdgeCases:
         async def mock_request(method, url, **kwargs):
             return MockHTTPResponse(200, status_data)
 
-        client = Client(base_url="http://localhost:3000")
+        client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
             result = await client.get_finality_status("test-scope")

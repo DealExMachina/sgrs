@@ -207,12 +207,12 @@ Methods:
 @pytest.fixture
 def client():
     """Create a test client."""
-    return Client(base_url="http://localhost:3000")
+    return Client(base_url="http://localhost:3003")
 
 @pytest.fixture
 def client_with_key():
     """Create a test client with API key."""
-    return Client(base_url="http://localhost:3000", api_key="test-key")
+    return Client(base_url="http://localhost:3003", api_key="test-key")
 ```
 
 ## Verification Checklist
