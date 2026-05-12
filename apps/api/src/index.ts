@@ -29,7 +29,7 @@ import {
 } from "@sgrs/db";
 import { EventsApi } from "@sgrs/client-ts";
 import { createApp } from "./app.js";
-import { validateApiKeyConfig } from "./middleware/auth.js";
+import { validateAuthConfig, authTierStatus } from "./middleware/tier.js";
 
 async function main() {
   console.log("[sgrs][api] Starting…");
@@ -38,16 +38,28 @@ async function main() {
   validateEncryptionKey();
   console.log("[sgrs][api] Encryption key OK.");
 
-  // In production, an API key is required — fail before accepting traffic.
+  // In production, the tenant tier MUST have a key. Higher tiers are
+  // optional but warned about when configured insecurely (e.g. godlike
+  // without an IP allowlist).
   if (process.env.NODE_ENV === "production") {
-    validateApiKeyConfig();
-    console.log("[sgrs][api] API key OK.");
-  } else {
-    if (!process.env.API_KEY) {
-      console.warn(
-        "[sgrs][api] WARNING: API_KEY is not set — all requests will be accepted without authentication."
-      );
-    }
+    validateAuthConfig();
+    console.log("[sgrs][api] Auth config OK.");
+  } else if (!process.env.TENANT_API_KEY && !process.env.API_KEY) {
+    console.warn(
+      "[sgrs][api] WARNING: TENANT_API_KEY (or legacy API_KEY) is not set — /api/* will accept all requests without authentication.",
+    );
+  }
+  const tiers = authTierStatus();
+  console.log(
+    `[sgrs][api] Auth tiers: tenant=${tiers.tenant} admin=${tiers.admin} godlike=${tiers.godlike} godlike_ip_restricted=${tiers.godlike_ip_restricted}`,
+  );
+  if (
+    process.env.KERNEL_CONTROL_PLANE_URL &&
+    /:3006(?:\/|$)/.test(process.env.KERNEL_CONTROL_PLANE_URL)
+  ) {
+    console.warn(
+      "[sgrs][api] DEPRECATION: KERNEL_CONTROL_PLANE_URL on :3006 is legacy. Prefer FEED_SERVER_URL and route /v1/* via feed.",
+    );
   }
 
   // ── Step 2: Run database migrations ────────────────────────────────────────

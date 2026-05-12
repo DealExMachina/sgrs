@@ -132,8 +132,13 @@ ALTER TABLE "epoch_summaries"
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS "claims_scope_round_idx" ON "claims" ("scope_id", "round" DESC);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "drifts_scope_round_idx" ON "drifts" ("scope_id", "round" DESC);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "contradictions_scope_status_idx" ON "contradictions" ("scope_id", "status");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "risks_scope_level_idx" ON "risks" ("scope_id", "level");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "documents_scope_idx" ON "documents" ("scope_id");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "epoch_summaries_scope_round_idx" ON "epoch_summaries" ("scope_id", "round" DESC);
