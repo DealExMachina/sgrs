@@ -4,29 +4,23 @@ Ports, environment variables, and how the Studio (`:3001`), API (`:3003`), proxy
 
 ## Canonical local ports (source of truth)
 
-Use this table when editing `.env.example`, client READMEs, or copy-paste quickstarts. **Do not use `localhost:3000`** as a placeholder for the product API: on a full swarm stack, **OpenFGA** exposes HTTP/playground on host **3000** ([companion kernel `docker-compose.yml`](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docker-compose.yml)).
+This table is the **only** contract for ports when the swarm kernel and the SGRS monorepo run on one host. Ports are **fixed** so stacks start without guessing.
+
+Do **not** use `localhost:3000` as the product API URL. On a full swarm compose stack, **OpenFGA** binds host **3000** ([kernel `docker-compose.yml`](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docker-compose.yml)).
 
 | Role | Host port | Notes |
 |------|-----------|--------|
-| **SGRS Studio** (Next.js) | `3001` | Fixed in `apps/studio` (`next dev --port 3001`). Browser and same-origin `/api/*` proxies. |
-| **SGRS API** (Hono) | `3003` | **Recommended default** for this monorepo. Set `PORT=3003` in root `.env.local` and match `NEXT_PUBLIC_BACKEND_API_URL`. Code fallback if `PORT` unset: `3001` (API-only dev without Studio). |
-| **Swarm feed** (kernel) | `3002` | `FEED_SERVER_URL=http://localhost:3002` when the product API proxies `/v1/*` to the kernel. |
-| **Swarm demo UI** (kernel) | `3003` | `pnpm run demo` in [open-governed-swarm-of-agents](https://github.com/DealExMachina/open-governed-swarm-of-agents) — **same port as the SGRS API default**. Do not run both on the same host without changing one of the ports (see below). |
-| **OpenFGA** (kernel) | `3000` (UI) | Reserve when running kernel `docker compose`. Not used by SGRS Studio/API. |
-| **Grafana** (kernel) | `3004` | Host maps container 3000 → 3004 in kernel compose. |
-| **NATS** | `4222` | Typical `nats://localhost:4222`. |
-| **Postgres** (kernel) | `5433` | Common mapping to avoid clashing with a local `5432`. |
+| **SGRS Studio** (Next.js) | `3001` | `apps/studio` — `next dev --port 3001`. Same-origin `/api/*` proxies. |
+| **SGRS API** (Hono) | `3003` | Set `PORT=3003` and `NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003`. Code default when `PORT` unset: `3003`. |
+| **Swarm feed** (kernel) | `3002` | `FEED_SERVER_URL=http://localhost:3002` for product→kernel `/v1/*` proxy. |
+| **Swarm demo UI** (kernel) | `3005` | `pnpm run demo` in [open-governed-swarm-of-agents](https://github.com/DealExMachina/open-governed-swarm-of-agents) — default **`DEMO_PORT`**; **never** use for `apps/api`. |
+| **Resolution MCP** (kernel) | `3006` | Kernel hatchery HTTP helper default (`RESOLUTION_MCP_PORT`); distinct from demo and product API. |
+| **OpenFGA** (kernel) | `3000` | Playground UI. |
+| **Grafana** (kernel) | `3004` | Host maps container 3000 → 3004. |
+| **NATS** | `4222` | |
+| **Postgres** (kernel) | `5433` | Typical kernel Docker mapping. |
 
-### Kernel + SGRS on the same machine
-
-If you need **both** the kernel demo on **3003** and the SGRS API, move the API to a free port (e.g. **`3005`**) and point Studio at it:
-
-```env
-PORT=3005
-NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3005
-```
-
-External SDKs (`@sgrs/client-ts`, `sgrs-client`) should use the **same base URL** as your running API (`http://localhost:3003` or `http://localhost:3005`, never a random placeholder port).
+Published SDKs use **`http://localhost:3003`** as `baseUrl` for a local API from this repo’s `.env.example`.
 
 ## Quickstart
 
@@ -37,7 +31,7 @@ pnpm install
 pnpm dev
 ```
 
-Turbo starts Studio on **:3001** and the API on the port from your root `.env.local` (set `PORT=3003` so Studio’s proxy matches `NEXT_PUBLIC_BACKEND_API_URL`).
+Turbo starts Studio on **:3001** and the API on the port from your root `.env.local` — use **`PORT=3003`** so it matches `NEXT_PUBLIC_BACKEND_API_URL` and the canonical table above.
 
 The API dev script loads **`/.env.local`** via `apps/api` (`tsx --env-file=../../.env.local`). Studio can use `apps/studio/.env.local` for overrides.
 
@@ -48,7 +42,7 @@ The API dev script loads **`/.env.local`** via `apps/api` (`tsx --env-file=../..
 | Service | Port | Notes |
 |--------|------|--------|
 | Studio (Next.js) | `3001` | `apps/studio` — browser and `/api/*` proxy routes |
-| API (Hono) | `3003` (recommended) | `apps/api` — set `PORT=3003` in root `.env.local` to match Studio proxy defaults; if unset, code defaults to `3001` (API-only). Use `3005` if kernel demo already uses `3003`. |
+| API (Hono) | `3003` | `apps/api` — `PORT=3003` in root `.env.local`; matches Studio proxy and this contract. |
 | NATS | `4222` | Typical local URL `nats://localhost:4222` |
 | PostgreSQL | often `5433` | When mapped from Docker to avoid clashing with a local `5432` |
 
@@ -147,7 +141,7 @@ apps/api (:3003)
   → optional NATS_URL for publishing and event wiring
 ```
 
-`apps/api/src/index.ts`: `PORT` from env, default **`3001`** — set **`PORT=3003`** locally so it matches the Studio proxy.
+`apps/api/src/index.ts`: `PORT` from env, default **`3003`** — keep **`PORT=3003`** in `.env.local` so it matches the Studio proxy and the canonical port table.
 
 ## Environment variable map
 

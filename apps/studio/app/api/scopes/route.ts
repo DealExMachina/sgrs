@@ -1,5 +1,5 @@
 /**
- * Proxy /api/scopes to the backend API server (running on port 3003).
+ * Proxy /api/scopes to the backend API server (canonical port 3003).
  *
  * Bridges the frontend and backend, allowing both to run on different ports.
  */

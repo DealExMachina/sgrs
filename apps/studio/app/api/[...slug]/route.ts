@@ -12,7 +12,7 @@
  * - /api/models
  * - Any other backend endpoints
  *
- * Bridges the frontend (port 3001) and backend (port 3003), allowing both to run on different ports.
+ * Proxies from the Studio origin (port 3001) to the Hono API (canonical port 3003).
  */
 
 import { NextResponse } from "next/server";

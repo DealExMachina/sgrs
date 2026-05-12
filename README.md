@@ -36,7 +36,7 @@ Generated reference: run `pnpm docs` (OpenAPI + TypeDoc) and `pnpm docs:py` (Sph
 
 Prereqs: Node 20.19+, pnpm 9.15+, Python 3.11+ (for `client-py`).
 
-**Ports:** Studio listens on **3001**; API on **3003** by default (see [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md)). Published SDKs should use `baseUrl: 'http://localhost:3003'` against a local API, not port 3000 (reserved by OpenFGA in the full swarm compose stack).
+**Ports:** Studio **3001**; SGRS API **3003**; kernel demo UI **3005**; kernel resolution MCP **3006**. See [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md). SDK `baseUrl`: `http://localhost:3003`. Port **3000** is OpenFGA in the full swarm stack, not the product API.
 
 ```bash
 pnpm install
