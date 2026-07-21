@@ -32,7 +32,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "bench": "vitest bench",
-    "lint": "echo 'lint skipped'"
+    "lint": "eslint src"
   },
   "dependencies": {
     "@sgrs/api-schema": "workspace:*"

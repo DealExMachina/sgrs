@@ -26,6 +26,7 @@
     "build": "pnpm --dir ../.. --filter @sgrs/api-schema build && pnpm --dir ../.. --filter @sgrs/client-ts build && tsc",
     "dev": "tsc --watch",
     "typecheck": "pnpm --dir ../.. --filter @sgrs/api-schema build && pnpm --dir ../.. --filter @sgrs/client-ts build && tsc --noEmit",
+    "lint": "eslint src",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },

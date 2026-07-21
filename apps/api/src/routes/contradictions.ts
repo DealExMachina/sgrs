@@ -9,7 +9,7 @@
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { contradictions as contradictionsTable } from "@sgrs/db";
 import {
   ContradictionSeverity,

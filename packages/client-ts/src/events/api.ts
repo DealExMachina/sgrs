@@ -25,7 +25,6 @@ import {
   type SgrsEvent,
   type ScopeEvent,
   type ModelEvent,
-  type AgentEvent,
   type ScopeCreatedEvent,
   type ScopeUpdatedEvent,
   type ScopeDeletedEvent,
@@ -135,6 +134,18 @@ export class NatsNotConnectedError extends Error {
         "Call await client.connect() before subscribing.",
     );
     this.name = "NatsNotConnectedError";
+  }
+}
+
+function reportDecodeError(
+  cfg: NatsConfig | undefined,
+  err: EventValidationError,
+  logPrefix: string,
+): void {
+  if (cfg?.onDecodeError) {
+    cfg.onDecodeError(err);
+  } else {
+    console.warn(`${logPrefix} ${err.message}`);
   }
 }
 
@@ -325,9 +336,7 @@ export class EventsApi {
               `Message size ${msg.data.length} bytes exceeds limit ${maxPayload} bytes`,
               msg.subject,
             );
-            cfg.onDecodeError
-              ? cfg.onDecodeError(err)
-              : console.warn(`[sgrs][NATS] ${err.message}`);
+            reportDecodeError(cfg, err, "[sgrs][NATS]");
             continue;
           }
 
@@ -342,9 +351,7 @@ export class EventsApi {
               e instanceof EventValidationError
                 ? e
                 : new EventValidationError(String(e), msg.subject);
-            cfg.onDecodeError
-              ? cfg.onDecodeError(err)
-              : console.warn(`[sgrs][NATS] ${err.message}`);
+            reportDecodeError(cfg, err, "[sgrs][NATS]");
             continue;
           }
 
@@ -691,9 +698,7 @@ export class EventsApi {
               e instanceof EventValidationError
                 ? e
                 : new EventValidationError(String(e), msg.subject);
-            cfg.onDecodeError
-              ? cfg.onDecodeError(err)
-              : console.warn(`[sgrs][NATS][JetStream] ${err.message}`);
+            reportDecodeError(cfg, err, "[sgrs][NATS][JetStream]");
             msg.nak();
             continue;
           }

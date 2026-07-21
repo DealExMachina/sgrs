@@ -5,7 +5,7 @@
  * Covers all security, correctness, and scalability requirements.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   validateInboundEvent,
   EventValidationError,
@@ -307,7 +307,7 @@ describe("EventsApi lifecycle", () => {
   });
 
   it("T-21: connected is false after close()", async () => {
-    const { api, nc } = buildMockEventApi();
+    const { api } = buildMockEventApi();
     expect(api.connected).toBe(true);
     await api.close();
     // After drain, _nc is set to null
@@ -333,13 +333,6 @@ describe("EventsApi lifecycle", () => {
 describe("publishScopeEvent tenant enforcement", () => {
   it("T-33: rejects publish to a different tenant's veto subject", () => {
     const { api } = buildMockEventApi();
-    const ev = {
-      ...createBaseEvent("blackrock"),
-      type: "scope.veto.activated" as const,
-      scopeId: "scope-1",
-      activatedBy: "agent-1",
-      payload: MINIMAL_FINALITY as any,
-    };
     // publishScopeEvent derives subject from (tenant, scopeId) — it will
     // use "blackrock" for the subject and "blackrock" for the assertion.
     // To test cross-tenant injection, use publish() directly:
@@ -356,7 +349,6 @@ describe("publishScopeEvent tenant enforcement", () => {
   it("T-34: publishScopeEvent with unknown type throws explicitly", () => {
     const { api } = buildMockEventApi();
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       api.publishScopeEvent("acme", "scope-1", { ...createBaseEvent("acme"), type: "scope.unknown" } as any),
     ).toThrow("Unhandled scope event type");
   });
@@ -379,7 +371,7 @@ describe("inbound message error handling", () => {
     });
     // Simulate inbound oversized message via the internal codec path
     const codec = (api as any)._codec;
-    const data = codec.encode({ ...VALID_BASE, type: "scope.deleted", scopeId: "s1" });
+    codec.encode({ ...VALID_BASE, type: "scope.deleted", scopeId: "s1" });
     // Patch max payload to trigger size guard
     (api as any)._maxPayload = 1;
     // Trigger via subscribe — the sub IIFE processes incoming messages

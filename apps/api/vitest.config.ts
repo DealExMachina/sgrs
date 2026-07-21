@@ -4,11 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    include: ["src/**/__tests__/**/*.test.ts"],
+    exclude: ["dist/**", "node_modules/**"],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // Each test file gets its own isolated worker — prevents DB state bleed
     pool: "forks",
-    poolOptions: {
-      forks: { singleFork: false },
-    },
     // Vitest needs process.env for the encryption key
     env: {
       ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // 32 zero bytes, base64

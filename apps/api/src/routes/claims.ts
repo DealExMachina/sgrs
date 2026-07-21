@@ -12,7 +12,7 @@ import { zValidator } from "@hono/zod-validator";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { claims as claimsTable } from "@sgrs/db";
-import { Claim, FinalityDimension } from "@sgrs/api-schema";
+import { FinalityDimension } from "@sgrs/api-schema";
 import type { Db } from "@sgrs/db";
 import type { EventsApi } from "@sgrs/client-ts";
 import * as ev from "../events.js";

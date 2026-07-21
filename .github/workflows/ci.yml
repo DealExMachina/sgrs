@@ -62,9 +62,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
       - run: pnpm test:coverage
-        # Generate coverage report for quality tracking
+        # Single pass: tests + coverage (avoids running the suite twice)
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
