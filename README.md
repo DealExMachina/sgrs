@@ -8,14 +8,14 @@ This repo is the **product** layer: multi-tenant Studio, REST API, and client li
 
 | Path | Name | License | Packages |
 |---|---|---|---|
-| `apps/api` | SGRS REST API (Hono) | BSL 1.1 | not on npm |
-| `apps/studio` | SGRS Studio (Next.js) | BSL 1.1 | not on npm |
-| `packages/ui` | Design tokens + shared components | BSL 1.1 | not on npm |
-| `packages/graph` | Cytoscape React wrapper + layouts | BSL 1.1 | not on npm |
+| `apps/api` | SGRS REST API (Hono) | MIT | not on npm |
+| `apps/studio` | SGRS Studio (Next.js) | MIT | not on npm |
+| `packages/ui` | Design tokens + shared components | MIT | not on npm |
+| `packages/graph` | Cytoscape React wrapper + layouts | MIT | not on npm |
 | `packages/api-schema` | OpenAPI 3.1 + Zod (source of truth) | MIT | planned / workspace |
 | `packages/client-ts` | TypeScript client | MIT | [`@sgrs/client-ts` on npm](https://www.npmjs.com/package/@sgrs/client-ts) |
 | `packages/client-py` | Python client | MIT | [`sgrs-client` on PyPI](https://pypi.org/project/sgrs-client/) |
-| `packages/docs` | Generated API + SDK reference (OpenAPI, TypeDoc) | BSL 1.1 | [GitHub Pages site](https://dealexmachina.github.io/sgrs/) (enable Pages in repo settings) |
+| `packages/docs` | Generated API + SDK reference (OpenAPI, TypeDoc) | MIT | [GitHub Pages site](https://dealexmachina.github.io/sgrs/) |
 | `examples/` | Seed scenarios + governance presets | MIT | — |
 
 ## Client libraries
@@ -30,7 +30,7 @@ npm install @sgrs/client-ts
 pip install sgrs-client
 ```
 
-Generated reference: run `pnpm docs` (OpenAPI + TypeDoc) and `pnpm docs:py` (Sphinx) locally, or use the [hosted docs](https://dealexmachina.github.io/sgrs/) when GitHub Pages is enabled for this repository.
+Generated reference: run `pnpm docs` (OpenAPI + TypeDoc) and `pnpm docs:py` (Sphinx) locally, or use the [hosted docs](https://dealexmachina.github.io/sgrs/).
 
 ## Quickstart (dev)
 
@@ -51,7 +51,7 @@ pnpm dev   # Turbo: Studio :3001; API uses PORT from .env.local (template: PORT=
 - **`pnpm docs`** — API (OpenAPI / Redoc) + SDK TypeDoc → `packages/docs/dist/` ([`packages/docs/README.md`](./packages/docs/README.md))
 - **`pnpm docs:py`** — Python `sgrs-client` Sphinx site → `packages/client-py/docs/_build/html/`
 - [MIGRATION.md](./MIGRATION.md) — schema and upgrade notes where applicable
-- **Published reference (GitHub Pages):** [dealexmachina.github.io/sgrs](https://dealexmachina.github.io/sgrs/) — deployed from [.github/workflows/docs-pages.yml](.github/workflows/docs-pages.yml) when Pages is enabled
+- **Published reference (GitHub Pages):** [dealexmachina.github.io/sgrs](https://dealexmachina.github.io/sgrs/) — deployed from [.github/workflows/docs-pages.yml](.github/workflows/docs-pages.yml)
 
 ## Development modes
 
@@ -98,6 +98,10 @@ See [SECURITY.md](./SECURITY.md). Disclose privately to security@dealexmachina.c
 
 Use of Studio, API, and clients is **at your own risk** while pre-production. See the kernel repo disclaimer: [experimental-terms.md](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docs/experimental-terms.md).
 
+## License
+
+[MIT](./LICENSE) — see [LICENSES.md](./LICENSES.md) for per-package details.
+
 ## Status
 
-Private, pre-alpha. Not for production.
+Public, pre-alpha. Not for production.
