@@ -121,15 +121,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: google/osv-scanner-action@v2.3.8
         with:
-          path: .
-          lockfile: pnpm-lock.yaml
+          scan-args: |-
+            -L pnpm-lock.yaml
+            -L packages/client-py/uv.lock
           fail-on-failure: false
           # Non-blocking until upstream scanner path is stabilized for lockfile mode
-      - uses: google/osv-scanner-action@v2.3.8
-        with:
-          path: packages/client-py
-          lockfile: uv.lock
-          fail-on-failure: false
 
   audit:
     name: Security Audit

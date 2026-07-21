@@ -5,9 +5,15 @@
     "rootDir": "./src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "verbatimModuleSyntax": true,
     "exactOptionalPropertyTypes": true
   },
-  "include": ["src/**/*", "src/__tests__/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/__tests__/**",
+    "src/**/*.bench.ts"
+  ]
 }
