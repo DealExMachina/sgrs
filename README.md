@@ -45,6 +45,7 @@ pnpm dev   # Turbo: Studio :3001; API uses PORT from .env.local (template: PORT=
 
 ## Documentation
 
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute (setup, PR flow, checks)
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — Studio hooks, patterns, API route list
 - [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md) — ports, env vars, proxy and SSE flows
 - [PERFORMANCE_GUIDANCE.md](./PERFORMANCE_GUIDANCE.md) — client timeouts, concurrency, and performance checks
