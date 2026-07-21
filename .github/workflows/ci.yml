@@ -44,8 +44,16 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      OPEN_SWARM_REPO: ${{ github.workspace }}/open-governed-swarm-of-agents
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout open-governed-swarm-of-agents (integration clients)
+        uses: actions/checkout@v4
+        with:
+          repository: DealExMachina/open-governed-swarm-of-agents
+          path: open-governed-swarm-of-agents
+          fetch-depth: 1
       - uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
