@@ -25,4 +25,4 @@ const data: GraphData = {
 
 ## License
 
-BUSL-1.1 — see `LICENSE`.
+MIT — see `LICENSE`.

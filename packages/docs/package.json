@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Aggregated API (OpenAPI) + TypeScript SDK reference — generated from @sgrs/api-schema and @sgrs/client-ts",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "docs": "node scripts/build.mjs",

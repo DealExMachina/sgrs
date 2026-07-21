@@ -1,56 +1,21 @@
-Business Source License 1.1
+MIT License
 
-License text: https://mariadb.com/bsl11/
+Copyright (c) 2025 Deal ex Machina SAS
 
-Parameters
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Licensor: Deal ex Machina SAS, 24 rue de Clichy, 75009 Paris, France
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Licensed Work: SGRS Studio
-
-The Licensed Work is © 2025 Deal ex Machina SAS.
-
-Change Date: April 24, 2029
-
-Change License: Apache License, Version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
-
-For information about alternative licensing arrangements for the Licensed Work, please contact licensing@dealexmachina.com
-
-Notice
-
-Business Source License 1.1
-
-Terms
-
-The Licensor hereby grants you the right to copy, modify, create derivative works,
-redistribute, and make non-production use of the Licensed Work. The Licensor may make
-an Additional Use Grant, above, permitting you to make production use of the Licensed
-Work.
-
-Effective on the Change Date, or if you acquire a copy of the Licensed Work after the
-Change Date, on the date you acquire the copy, the Licensor grants you rights under the
-terms of the Change License, and the rights granted in the paragraph above terminate.
-
-If your use of the Licensed Work doesn't comply with the requirements currently in effect
-as described in this License, you must purchase a commercial license from the Licensor
-or cease using the Licensed Work.
-
-All copies of the original and modified Licensed Work, and derivative works of the
-Licensed Work, are subject to this License. This License applies separately for each
-version of the Licensed Work and the Change Date may vary for each version of the
-Licensed Work released by Licensor.
-
-You may not use or distribute this Licensed Work except in compliance with the License.
-Unless explicitly provided otherwise, any use, modification, or distribution of any
-Licensed Work by you implies your acceptance of this License and all its terms and
-conditions.
-
-As a condition of exercising the rights and permissions granted to you, you assume all
-responsibility and risk for the consequences of your own acts and omissions under this
-License, including any use or distribution of the Licensed Work by you.
-
-Third-Party Components
-
-Licensed Work may include Third-Party Components, subject to the terms and conditions of
-the Third-Party Component's license. Your use of Third-Party Components is governed by
-their respective licenses.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
