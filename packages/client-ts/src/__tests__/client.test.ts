@@ -15,7 +15,7 @@ describe("Client", () => {
     mockFetch = vi.fn();
     client = new Client({
       baseUrl: "http://localhost:3003",
-      fetch: mockFetch,
+      fetch: mockFetch as typeof fetch,
       timeout: 5000,
     });
   });
@@ -436,7 +436,7 @@ describe("Client", () => {
       const clientWithKey = new Client({
         baseUrl: "http://localhost:3003",
         apiKey: "test-api-key",
-        fetch: mockFetch,
+        fetch: mockFetch as typeof fetch,
       });
 
       mockFetch.mockResolvedValueOnce({
