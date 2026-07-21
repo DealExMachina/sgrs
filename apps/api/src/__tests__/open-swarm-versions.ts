@@ -2,10 +2,9 @@ import { readFile } from "node:fs/promises";
 
 export type OpenSwarmCompatManifest = {
   kernelClient: {
+    version: string;
     npm: string;
     pypi: string;
-    typescript: string;
-    python: string;
   };
 };
 

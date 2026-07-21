@@ -54,6 +54,8 @@ jobs:
           repository: DealExMachina/open-governed-swarm-of-agents
           path: open-governed-swarm-of-agents
           fetch-depth: 1
+      - name: Align @sgrs/kernel-client semver with sgrs-kernel-client
+        run: bash scripts/align-open-swarm-kernel-version.sh "${{ github.workspace }}/open-governed-swarm-of-agents"
       - uses: pnpm/action-setup@v2
         with:
           version: ${{ env.PNPM_VERSION }}
