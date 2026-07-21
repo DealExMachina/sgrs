@@ -130,6 +130,8 @@ export function useEventStream(
     h.onAnyEvent?.(event);
   }, []);
 
+  const connectRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
   const connect = useCallback(async () => {
     if (disabledRef.current) return;
 
@@ -201,11 +203,17 @@ export function useEventStream(
     // ── Schedule retry (unless we were aborted or permanently disabled) ───────
     if (!controller.signal.aborted && !disabledRef.current) {
       retryTimerRef.current = setTimeout(
-        () => void connect(),
+        () => {
+          void connectRef.current?.();
+        },
         RETRY_DELAY_MS,
       );
     }
   }, [tenantId, routeEvent]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -21,7 +21,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "echo 'lint skipped — no files yet'"
+    "lint": "eslint src"
   },
   "dependencies": {
     "clsx": "2.1.1",

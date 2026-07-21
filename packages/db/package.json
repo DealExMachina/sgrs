@@ -20,7 +20,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "echo 'lint skipped'",
+    "lint": "eslint src",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts"
