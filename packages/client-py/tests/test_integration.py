@@ -5,6 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+import httpx
 
 from sgrs_client import Client, create_client
 from sgrs_client.schema import (
@@ -30,7 +31,17 @@ class MockHTTPResponse:
 
     def raise_for_status(self):
         if not 200 <= self.status_code < 300:
-            raise Exception(f"HTTP {self.status_code}")
+            request = httpx.Request("GET", "http://test")
+            response = httpx.Response(
+                self.status_code,
+                request=request,
+                json=self.json_data,
+            )
+            raise httpx.HTTPStatusError(
+                f"HTTP {self.status_code}",
+                request=request,
+                response=response,
+            )
 
 
 class TestScopeManagementWorkflow:

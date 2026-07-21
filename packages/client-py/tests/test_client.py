@@ -136,7 +136,7 @@ class TestModelOperations:
     async def test_connect_model(self):
         """Test connecting a model."""
         model_data = {
-            "handle": "mh_abcdef0123456789abcdef",
+            "handle": "mh_abcdefghijklmnopqrstuvwx",
             "provider": "openai",
             "model": "gpt-4",
             "created_at": "2025-04-24T10:00:00Z",
