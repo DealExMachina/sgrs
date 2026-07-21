@@ -12,6 +12,7 @@
     "test:coverage": "turbo run test:coverage",
     "docs": "turbo run docs",
     "docs:py": "bash scripts/docs-py.sh",
+    "test:py": "cd packages/client-py && uv sync --locked --extra dev --extra test && uv run pytest",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",
     "changeset": "changeset",
@@ -19,13 +20,30 @@
     "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
-    "@changesets/cli": "2.31.0",
+    "@changesets/cli": "2.31.1",
     "prettier": "3.8.3",
     "turbo": "2.9.14",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vite": "6.4.3"
   },
   "engines": {
     "node": ">=20.19",
     "pnpm": ">=9.15"
+  },
+  "pnpm": {
+    "overrides": {
+      "@babel/core": "7.29.6",
+      "@eslint/plugin-kit": "0.3.4",
+      "brace-expansion@1.1.14": "1.1.16",
+      "brace-expansion@2.1.0": "2.1.2",
+      "brace-expansion@5.0.5": "5.0.7",
+      "js-yaml@3.14.2": "3.15.0",
+      "js-yaml@4.1.1": "4.3.0",
+      "postcss@8.4.31": "8.5.21",
+      "vite@5.4.21": "6.4.3",
+      "vite": "6.4.3",
+      "esbuild@0.18.20": "0.25.0",
+      "esbuild@0.27.7": "0.28.1"
+    }
   }
 }
