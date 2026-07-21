@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,14 +5,10 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { AnalyticsDb, closeDb, createDb, runMigrations } from "@sgrs/db";
 import { createApp } from "../app.js";
-
-const OPEN_SWARM_REPO =
-  process.env.OPEN_SWARM_REPO ??
-  "/Users/jeanbapt/GitHub/open-governed-swarm-of-agents";
-const OPEN_SWARM_CLIENT_FILE = join(
-  OPEN_SWARM_REPO,
-  "packages/sgrs-client/src/index.ts",
-);
+import {
+  hasOpenSwarmTsClient,
+  OPEN_SWARM_TS_CLIENT,
+} from "./open-swarm-paths.js";
 
 type Recorded = { method: string; url: string };
 
@@ -33,7 +28,7 @@ async function makeAdminApp() {
   };
 }
 
-const hasOpenSwarmClient = existsSync(OPEN_SWARM_CLIENT_FILE);
+const hasOpenSwarmClient = hasOpenSwarmTsClient;
 
 describe.skipIf(!hasOpenSwarmClient)(
   "Smoke sync: open-swarm client vs sgrs admin proxy",
@@ -109,7 +104,7 @@ describe.skipIf(!hasOpenSwarmClient)(
         });
 
         // Exercise open-swarm direct control-plane client.
-        const mod = await import(pathToFileURL(OPEN_SWARM_CLIENT_FILE).href);
+        const mod = await import(pathToFileURL(OPEN_SWARM_TS_CLIENT).href);
         const createSgrsClient = mod.createSgrsClient as (
           opts: {
             baseUrl: string;

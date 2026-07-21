@@ -54,3 +54,6 @@ logs/
 # Local data (PGlite + DuckDB files — never commit database state)
 data/
 :memory:/
+
+# Local checkout of open-governed-swarm-of-agents (CI clones in workflow)
+open-governed-swarm-of-agents/

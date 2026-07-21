@@ -1,29 +1,13 @@
-import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  hasOpenSwarmSyncFixtures,
+  OPEN_SWARM_PY_CLIENT,
+  OPEN_SWARM_TS_CLIENT,
+  SGRS_ADMIN_ROUTER,
+} from "./open-swarm-paths.js";
 
-const OPEN_SWARM_REPO =
-  process.env.OPEN_SWARM_REPO ??
-  "/Users/jeanbapt/GitHub/open-governed-swarm-of-agents";
-
-const PY_CLIENT_FILE = join(
-  OPEN_SWARM_REPO,
-  "packages/sgrs-client-py/src/sgrs_client/__init__.py",
-);
-const TS_CLIENT_FILE = join(
-  OPEN_SWARM_REPO,
-  "packages/sgrs-client/src/index.ts",
-);
-const SGRS_ADMIN_ROUTER_FILE = join(
-  "/Users/jeanbapt/GitHub/sgrs",
-  "apps/api/src/routes/admin/index.ts",
-);
-
-const hasAllFiles =
-  existsSync(PY_CLIENT_FILE) &&
-  existsSync(TS_CLIENT_FILE) &&
-  existsSync(SGRS_ADMIN_ROUTER_FILE);
+const hasAllFiles = hasOpenSwarmSyncFixtures;
 
 /**
  * Each row declares the canonical control-plane route and the snippets that must
@@ -121,9 +105,9 @@ describe.skipIf(!hasAllFiles)(
   () => {
     it("keeps control-plane route mapping aligned across Python/TS/proxy", async () => {
       const [pyText, tsText, adminText] = await Promise.all([
-        readFile(PY_CLIENT_FILE, "utf8"),
-        readFile(TS_CLIENT_FILE, "utf8"),
-        readFile(SGRS_ADMIN_ROUTER_FILE, "utf8"),
+        readFile(OPEN_SWARM_PY_CLIENT, "utf8"),
+        readFile(OPEN_SWARM_TS_CLIENT, "utf8"),
+        readFile(SGRS_ADMIN_ROUTER, "utf8"),
       ]);
 
       for (const row of ROUTE_SYNC_MATRIX) {
