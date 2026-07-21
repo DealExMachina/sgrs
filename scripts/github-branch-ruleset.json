@@ -27,14 +27,14 @@
         "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "CI / Lint" },
-          { "context": "CI / Type Check" },
-          { "context": "CI / Test" },
-          { "context": "CI / Docs (OpenAPI + TypeDoc)" },
-          { "context": "CI / Docs (Sphinx, sgrs-client)" },
-          { "context": "CI / Test (Python, sgrs-client)" },
-          { "context": "CI / OSV Scanner" },
-          { "context": "CI / Security Audit" }
+          { "context": "Lint" },
+          { "context": "Type Check" },
+          { "context": "Test" },
+          { "context": "Docs (OpenAPI + TypeDoc)" },
+          { "context": "Docs (Sphinx, sgrs-client)" },
+          { "context": "Test (Python, sgrs-client)" },
+          { "context": "OSV Scanner" },
+          { "context": "Security Audit" }
         ]
       }
     }
