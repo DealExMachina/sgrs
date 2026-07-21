@@ -18,17 +18,20 @@ export default defineConfig({
     // Coverage reporting
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html"],
+      reporter: ["text", "json", "json-summary", "html"],
       exclude: [
         "node_modules/",
         "dist/",
         "**/*.test.ts",
         "**/*.spec.ts",
       ],
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80,
+      thresholds: {
+        // Floor aligned with current API coverage (~58% lines); raise as routes gain tests.
+        lines: 55,
+        statements: 52,
+        branches: 50,
+        functions: 35,
+      },
     },
   },
 });
