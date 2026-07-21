@@ -1,0 +1,10 @@
+{
+  "description": "Kernel integration client versions from DealExMachina/open-governed-swarm-of-agents that this sgrs revision is validated against. Update when the open repo bumps packages/sgrs-client/package.json or packages/sgrs-client-py/pyproject.toml.",
+  "openSwarmRepo": "https://github.com/DealExMachina/open-governed-swarm-of-agents",
+  "kernelClient": {
+    "npm": "@sgrs/kernel-client",
+    "pypi": "sgrs-kernel-client",
+    "typescript": "0.1.0",
+    "python": "0.1.1"
+  }
+}

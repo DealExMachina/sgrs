@@ -26,6 +26,21 @@ export const OPEN_SWARM_PY_CLIENT = join(
   "packages/sgrs-client-py/src/sgrs_client/__init__.py",
 );
 
+export const OPEN_SWARM_TS_PACKAGE_JSON = join(
+  OPEN_SWARM_REPO,
+  "packages/sgrs-client/package.json",
+);
+
+export const OPEN_SWARM_PY_PYPROJECT = join(
+  OPEN_SWARM_REPO,
+  "packages/sgrs-client-py/pyproject.toml",
+);
+
+export const OPEN_SWARM_COMPAT_MANIFEST = join(
+  SGRS_REPO_ROOT,
+  "integration/open-swarm-compat.json",
+);
+
 export const SGRS_ADMIN_ROUTER = join(
   SGRS_REPO_ROOT,
   "apps/api/src/routes/admin/index.ts",
@@ -37,3 +52,8 @@ export const hasOpenSwarmSyncFixtures =
   existsSync(OPEN_SWARM_TS_CLIENT) &&
   existsSync(OPEN_SWARM_PY_CLIENT) &&
   existsSync(SGRS_ADMIN_ROUTER);
+
+export const hasOpenSwarmVersionFixtures =
+  existsSync(OPEN_SWARM_TS_PACKAGE_JSON) &&
+  existsSync(OPEN_SWARM_PY_PYPROJECT) &&
+  existsSync(OPEN_SWARM_COMPAT_MANIFEST);
