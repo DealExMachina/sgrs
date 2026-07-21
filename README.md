@@ -39,8 +39,10 @@ Prereqs: Node 20.19+, pnpm 9.15+, Python 3.11+ (for `client-py`).
 **Ports:** Studio **3001**; SGRS API **3003**; kernel demo UI **3005**; kernel resolution MCP **3006**. See [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md). SDK `baseUrl`: `http://localhost:3003`. Port **3000** is OpenFGA in the full swarm stack, not the product API.
 
 ```bash
-pnpm install
-pnpm dev   # Turbo: Studio :3001; API uses PORT from .env.local (template: PORT=3003)
+git clone https://github.com/DealExMachina/sgrs.git
+cd sgrs
+pnpm setup    # install deps + create .env.local from .env.example
+pnpm dev      # Turbo: Studio :3001; API uses PORT from .env.local (default 3003)
 ```
 
 ## Documentation

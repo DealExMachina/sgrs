@@ -20,12 +20,19 @@ Thanks for helping improve SGRS. This repository is the **product layer** (Studi
 ```bash
 git clone https://github.com/DealExMachina/sgrs.git
 cd sgrs
-pnpm install
-cp apps/api/.env.example apps/api/.env.local   # adjust PORT, keys, etc.
+pnpm setup    # or: bash scripts/setup-local.sh
 pnpm dev
 ```
 
+This copies [`.env.example`](./.env.example) → **`.env.local`** at the **repo root** (used by `apps/api` via `tsx --env-file=../../.env.local`). Adjust `PORT`, `ENCRYPTION_KEY`, and kernel URLs as needed.
+
 Default dev ports: Studio **3001**, SGRS API **3003**. See [README.md](./README.md#quickstart-dev).
+
+**GitHub admin setup** (public repo, Pages, branch protection) — org admin only, requires `gh auth login` with a user account:
+
+```bash
+pnpm setup:github    # or: bash scripts/github-repo-setup.sh
+```
 
 ### Integration client sync tests
 
