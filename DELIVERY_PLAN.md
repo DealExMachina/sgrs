@@ -10,15 +10,15 @@ The repo is the **product surface** for the SGRS kernel (a separate Rust + TS or
 
 | Path | Name | License | Public artifact? |
 |---|---|---|---|
-| `apps/studio` | Next.js Studio (Business / Configure / Debug modes) | BSL 1.1 | no — SaaS app |
-| `apps/api` | Hono REST API server | BSL 1.1 | no — runs as service |
+| `apps/studio` | Next.js Studio (Business / Configure / Debug modes) | MIT | no — SaaS app |
+| `apps/api` | Hono REST API server | MIT | no — runs as service |
 | `packages/api-schema` | OpenAPI 3.1 + Zod (source of truth) | MIT | **later** (npm) |
 | `packages/client-ts` | `@sgrs/client` for JS/TS — HTTP + optional NATS events | MIT | **yes** (npm) |
 | `packages/client-py` | `sgrs-client` for Python — HTTP + optional NATS events | MIT | **yes** (PyPI) |
 | `packages/client-nats` | Compat package re-exporting `@sgrs/client-ts/events` | MIT (aligned with client-ts) | optional — see §5 |
-| `packages/db` | Drizzle ORM + DuckDB analytics | BSL 1.1 | no — internal |
-| `packages/graph` | Cytoscape React wrapper | BSL 1.1 | no — internal |
-| `packages/ui` | Design tokens + shared components | BSL 1.1 | no — internal |
+| `packages/db` | Drizzle ORM + DuckDB analytics | MIT | no — internal |
+| `packages/graph` | Cytoscape React wrapper | MIT | no — internal |
+| `packages/ui` | Design tokens + shared components | MIT | no — internal |
 | `examples/` | 6 domain seed scenarios | MIT | docs only |
 
 **The "deliver the libs" scope is therefore three packages**: `@sgrs/api-schema`, `@sgrs/client-ts`, `sgrs-client` (Py). Everything else is internal or deferred.
@@ -54,9 +54,9 @@ The repo is the **product surface** for the SGRS kernel (a separate Rust + TS or
   - `schema.py` (106 LOC) — Pydantic models for the REST API.
 - **Tests**: 4 files (client, events, integration, performance) — same shape as TS.
 - **Stated path**: README says client-py is "via openapi.json emitted from here [api-schema]". **Reality: the Python types are hand-written**, not generated. Two valid resolutions in §6 Phase 1.
-- **Packaging**: `pyproject.toml` + `pytest.ini`, BUSL-1.1 in the `LICENSE` file (mismatch — README declares MIT; needs reconciling).
+- **Packaging**: `pyproject.toml` + `pytest.ini`, MIT `LICENSE`.
 
-### 2.4 `apps/api` — REST surface (BSL, internal)
+### 2.4 `apps/api` — REST surface (MIT, internal)
 
 - **11 route files**, ~1,435 LOC under `src/routes/`. Endpoints (verbs collated):
 
@@ -181,9 +181,7 @@ Goal: green typecheck, green tests, strict-ESM lib tsconfigs, dep coherence.
 
 4. **`@hono/zod-validator` 0.7 vs current usage**: smoke-check the route handlers — the validator's middleware signature changed minimally between 0.4 and 0.7, but worth a grep.
 
-5. **License reconciliation**: `client-py/LICENSE` declares BUSL-1.1 but the README and intended publish license is MIT. Pick one and align all three: pyproject classifier, LICENSE file, README header.
-
-6. **Resolve `client-nats` disposition** per §5. Prefer `@sgrs/client-ts/events` in new code; remove `@sgrs/client-nats` when no dependents remain.
+5. **Resolve `client-nats` disposition** per §5. Prefer `@sgrs/client-ts/events` in new code; remove `@sgrs/client-nats` when no dependents remain.
 
 ### Phase 1 — Ship `@sgrs/api-schema@0.1.0` (npm, MIT)
 

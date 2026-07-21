@@ -19,4 +19,4 @@ cn("bg-ink text-mist", condition && "border-graphite");
 
 ## License
 
-BUSL-1.1 — see `LICENSE`.
+MIT — see `LICENSE`.

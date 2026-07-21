@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Cytoscape React wrapper with zoom-aware labels, hover focus, and DxM-themed defaults",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

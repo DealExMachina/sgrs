@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Design tokens and shared components for SGRS Studio",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

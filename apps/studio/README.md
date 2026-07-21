@@ -63,4 +63,4 @@ Ports and `.env.local` layout: see the repo root **`ROUTING_ARCHITECTURE.md`**.
 
 ## License
 
-BUSL-1.1 — see `LICENSE`.
+MIT — see `LICENSE`.

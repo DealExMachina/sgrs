@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "SGRS Studio — Next.js front-end for the governed agent swarm",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3001",
