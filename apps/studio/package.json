@@ -18,7 +18,7 @@
     "@sgrs/graph": "workspace:*",
     "@sgrs/ui": "workspace:*",
     "nats": "2.29.3",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "zod": "^4.4.1"
@@ -29,7 +29,7 @@
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.5.0",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.2.11",
     "postcss": "8.5.21",
     "tailwindcss": "3.4.17",
     "typescript": "5.9.3"
