@@ -24,7 +24,7 @@ export async function readOpenSwarmPyVersion(
 ): Promise<string> {
   const raw = await readFile(pyprojectPath, "utf8");
   const match = raw.match(/(?:^|\n)version\s*=\s*"([^"]+)"/);
-  if (!match) {
+  if (!match?.[1]) {
     throw new Error(`missing version in ${pyprojectPath}`);
   }
   return match[1];

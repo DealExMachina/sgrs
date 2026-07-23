@@ -21,6 +21,12 @@ const hasAllFiles = hasOpenSwarmSyncFixtures;
  */
 const ROUTE_SYNC_MATRIX = [
   {
+    route: "/v1/health",
+    py: /\/v1\/health/,
+    ts: /\/v1\/health/,
+    admin: /\/v1\/health/,
+  },
+  {
     route: "/v1/tenants",
     py: /\/v1\/tenants/,
     ts: /\/v1\/tenants/,
@@ -61,6 +67,12 @@ const ROUTE_SYNC_MATRIX = [
     py: /\/v1\/scopes\/\{scope_id\}\/metrics/,
     ts: /\/metrics/,
     admin: /\/metrics/,
+  },
+  {
+    route: "/v1/scopes/:scopeId/events",
+    py: /\/v1\/scopes\/.*\/events/,
+    ts: /\/v1\/scopes\/.*\/events/,
+    admin: /\/scopes\/:scopeId\/events/,
   },
   {
     route: "/v1/scopes/:scopeId/reset",

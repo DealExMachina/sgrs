@@ -13,8 +13,8 @@ sys.path.insert(0, str(_src.resolve()))
 project = "sgrs-client"
 copyright = "Deal ex Machina SAS"
 author = "Deal ex Machina SAS"
-release = "0.0.0"
-version = "0.0.0"
+release = "0.1.0"
+version = "0.1.0"
 
 extensions = [
     "sphinx.ext.autodoc",
