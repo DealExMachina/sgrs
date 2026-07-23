@@ -2,7 +2,7 @@
 
 Orchestration kernel (Rust + TypeScript swarm, `docker compose`, feed API, agents): **[DealExMachina/open-governed-swarm-of-agents](https://github.com/DealExMachina/open-governed-swarm-of-agents)** — see its [Quick start](https://github.com/DealExMachina/open-governed-swarm-of-agents#quick-start) and [deployment guide](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docs/deployment.md).
 
-This repo is the **product** layer: multi-tenant Studio, REST API, and client libraries for browsers and backends.
+This repo is the **product** layer: multi-tenant Studio, REST API, and client libraries for browsers and backends. **Licensed under [MIT](./LICENSE)** — distinct from the research kernel’s terms (see [Licensing](#licensing) below).
 
 ## Layout
 
@@ -101,9 +101,18 @@ See [SECURITY.md](./SECURITY.md). Disclose privately to security@dealexmachina.c
 
 Use of Studio, API, and clients is **at your own risk** while pre-production. See the kernel repo disclaimer: [experimental-terms.md](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docs/experimental-terms.md).
 
-## License
+## Licensing
 
-[MIT](./LICENSE) — see [LICENSES.md](./LICENSES.md) for per-package details.
+**This repository (`sgrs`) is [MIT](./LICENSE).** The Studio app, REST API, client libraries (`@sgrs/client-ts`, `sgrs-client`), and all packages listed in the layout table below are released under the MIT License. See [LICENSES.md](./LICENSES.md) for per-package details.
+
+| Repository | Role | License |
+|---|---|---|
+| **This repo** (`DealExMachina/sgrs`) | Product layer — Studio, API, SDKs | **MIT** |
+| [open-governed-swarm-of-agents](https://github.com/DealExMachina/open-governed-swarm-of-agents) | Research / orchestration kernel (swarm, feed, agents) | Split — see [kernel LICENSES.md](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/LICENSES.md) (AGPL-3.0 orchestration, ELv2 Rust core; kernel *clients* are MIT) |
+
+Do not assume the kernel’s copyleft terms apply to this product repo. Integration with the kernel is via HTTP APIs and optional local checkout for smoke tests — not by merging kernel source into this tree.
+
+**Enterprise / production:** features aimed at regulated or production deployments may ship under separate commercial terms in a future edition. This open-source MIT tree remains the public product surface for development and integration; enterprise-specific capabilities will be documented when offered.
 
 ## Status
 
