@@ -44,6 +44,7 @@ echo "==> Ensured data/ directory exists."
 OPEN_SWARM_DIR="${OPEN_SWARM_REPO:-${ROOT}/open-governed-swarm-of-agents}"
 if [[ -f "${OPEN_SWARM_DIR}/packages/sgrs-client/src/index.ts" ]]; then
   echo "==> Open-swarm checkout found at ${OPEN_SWARM_DIR}"
+  echo "    Align kernel client semver: pnpm align:open-swarm"
 else
   echo "==> Optional (integration smoke tests):"
   echo "    git clone https://github.com/DealExMachina/open-governed-swarm-of-agents.git"

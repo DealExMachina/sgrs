@@ -44,6 +44,17 @@ export OPEN_SWARM_REPO="$PWD/open-governed-swarm-of-agents"
 pnpm test
 ```
 
+To align kernel client versions in your open-swarm clone (`@sgrs/kernel-client` TS → same semver as `sgrs-kernel-client` Python), from the **sgrs** repo root:
+
+```bash
+pnpm align:open-swarm
+# or: bash scripts/align-open-swarm-kernel-version.sh "$OPEN_SWARM_REPO"
+# or with explicit path:
+pnpm align:open-swarm -- /path/to/open-governed-swarm-of-agents
+```
+
+Then commit the change in the **open-governed-swarm-of-agents** repo (not in sgrs).
+
 ## Branching and pull requests
 
 1. Fork the repository (or branch from `dev` if you are a maintainer).
