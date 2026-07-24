@@ -186,6 +186,7 @@ describe("Client", () => {
       });
 
       const result = await client.scopes.create({
+        id: "new-scope",
         name: "New Scope",
         tag: "new",
         state: "active",
