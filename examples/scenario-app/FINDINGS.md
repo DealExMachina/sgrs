@@ -38,7 +38,17 @@ then fix — or at least record — every discrepancy found.
 - Files: `packages/db/src/schema.ts`, `packages/db/drizzle/0002_*.sql`,
   `packages/api-schema/src/index.ts`, `apps/api/src/routes/{documents,claims,risks}.ts`.
 
-## 3. `/api/ingest` requires the external kernel feed server — RECORDED
+## 3. HITL flow exercised via BotHITL — WORKS
+
+- The scenario simulates a human-in-the-loop reviewer (`BotHITL`,
+  `bot-hitl@demo`). The comparator (kernel-sim) raises a critical contradiction
+  that escalates the Solvency II scope with an active veto. The BotHITL then
+  resolves the contradiction (`PATCH /api/contradictions/:id`), annotates the
+  epoch summary (`POST /api/epochs/:id/comments`), and lifts the veto — moving
+  the scope from `escalated` to `resolved`. The HITL surface behaved correctly;
+  no defects found here.
+
+## 4. `/api/ingest` requires the external kernel feed server — RECORDED
 
 - `POST /api/ingest` proxies to the swarm feed server (`FEED_SERVER_URL`, default
   `:3002`), which lives in the external kernel repo
@@ -48,7 +58,7 @@ then fix — or at least record — every discrepancy found.
   (`[kernel-sim]` in the log). Not a product bug — recorded so the demo's scope is
   explicit.
 
-## 4. Finality `per_dimension` floating-point noise — RECORDED (not fixed)
+## 5. Finality `per_dimension` floating-point noise — RECORDED (not fixed)
 
 - Upserting finality with computed per-dimension values echoes raw floats such as
   `0.49999999999999994`. Cosmetic; consider rounding to a fixed precision at the
