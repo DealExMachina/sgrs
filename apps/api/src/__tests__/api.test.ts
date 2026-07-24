@@ -432,6 +432,71 @@ describe("Scope CRUD", () => {
   });
 });
 
+// ─── Provenance & traceability ────────────────────────────────────────────────
+
+describe("Provenance & traceability", () => {
+  it("stores document provenance and links claims/risks by document_id", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "prov-scope", name: "Prov", tag: "P" },
+        }),
+      );
+
+      // Put a document with a stable provenance reference.
+      const provenance = "sha256:deadbeef";
+      const docRes = await app.request(
+        req("POST", "/api/documents", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", name: "Deal.pdf", type: "pdf", status: "processing", provenance },
+        }),
+      );
+      expect(docRes.status).toBe(201);
+      const doc = await docRes.json() as { id: string; provenance?: string };
+      expect(doc.provenance).toBe(provenance);
+
+      // A claim carries the document_id back to its source.
+      const claimRes = await app.request(
+        req("POST", "/api/claims", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", text: "Price is $10M.", source: "Deal.pdf", document_id: doc.id, confidence: 0.9 },
+        }),
+      );
+      expect(claimRes.status).toBe(201);
+
+      // A risk also links to the document.
+      const riskRes = await app.request(
+        req("POST", "/api/risks", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", description: "Concentration risk.", level: "high", source: "Deal.pdf", document_id: doc.id },
+        }),
+      );
+      expect(riskRes.status).toBe(201);
+
+      // Read back and assert the provenance link round-trips.
+      const claims = await (await app.request(
+        req("GET", "/api/claims/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ document_id?: string }>;
+      expect(claims).toHaveLength(1);
+      expect(claims[0]!.document_id).toBe(doc.id);
+
+      const risks = await (await app.request(
+        req("GET", "/api/risks/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ document_id?: string }>;
+      expect(risks[0]!.document_id).toBe(doc.id);
+
+      const docs = await (await app.request(
+        req("GET", "/api/documents/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ provenance?: string }>;
+      expect(docs[0]!.provenance).toBe(provenance);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 // ─── Finality ─────────────────────────────────────────────────────────────────
 
 describe("Finality", () => {

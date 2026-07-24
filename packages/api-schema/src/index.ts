@@ -174,6 +174,8 @@ export const Claim = z.object({
   text: z.string().min(1).max(2000),
   /** Source document name or agent identifier that produced this claim. */
   source: z.string().max(200),
+  /** Provenance link to the originating document (documents.id) for traceability. */
+  document_id: z.string().uuid().optional(),
   /** Which finality dimension this claim primarily informs. */
   dimension: FinalityDimension.optional(),
   /** Confidence score 0–1 assigned by the extraction agent. */
@@ -260,6 +262,8 @@ export const Risk = z.object({
   category: z.string().max(100).optional(),
   /** Source document or agent that identified this risk. */
   source: z.string().max(200),
+  /** Provenance link to the originating document (documents.id) for traceability. */
+  document_id: z.string().uuid().optional(),
   round: z.number().int().nonnegative(),
   created_at: z.string().datetime(),
 });
@@ -280,6 +284,11 @@ export const SgrsDocument = z.object({
   status: DocumentStatus,
   /** Number of claims extracted from this document so far. */
   claim_count: z.number().int().nonnegative().default(0),
+  /**
+   * Stable provenance reference for traceability — a content hash, source URI,
+   * or external document id (e.g. "sha256:…", "s3://…", "https://…").
+   */
+  provenance: z.string().max(500).optional(),
   ingested_at: z.string().datetime(),
 });
 export type SgrsDocument = z.infer<typeof SgrsDocument>;
