@@ -67,7 +67,7 @@ class TestScopeManagementWorkflow:
                 return MockHTTPResponse(200, scope_data)
             elif method == "POST":
                 return MockHTTPResponse(201, scope_data)
-            elif method == "PATCH":
+            elif method in ("PATCH", "PUT"):
                 updated = scope_data.copy()
                 updated["score"] = 0.65
                 updated["cycles"] = 3
@@ -222,7 +222,7 @@ class TestErrorHandling:
         client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
-            result = await client.create_scope(name="x", tag="test")
+            result = await client.create_scope("bad-scope", name="x", tag="test")
             assert result.ok is False
             assert result.error.status_code == 400
 
@@ -309,7 +309,7 @@ class TestEdgeCases:
         client = Client(base_url="http://localhost:3003")
 
         with patch.object(client._async_client, "request", new=mock_request):
-            result = await client._async_request("DELETE", "/api/v1/scopes/test", Scope)
+            result = await client._async_request("DELETE", "/api/scopes/test", Scope)
             # DELETE may return 204 with no body, so this tests error handling
 
     @pytest.mark.asyncio
