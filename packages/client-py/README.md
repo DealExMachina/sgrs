@@ -1,7 +1,7 @@
 # sgrs-client
 
 Python HTTP client for the SGRS REST API — feature-parity with
-[`@sgrs/client-ts`](../client-ts).
+[`@sgrs/client-ts`](https://www.npmjs.com/package/@sgrs/client-ts).
 
 ## Installation
 
