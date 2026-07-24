@@ -25,11 +25,14 @@ const CreateDocumentBody = z.object({
   name: z.string().min(1).max(500),
   type: z.string().min(1).max(50),
   status: DocumentStatus.optional().default("pending"),
+  /** Stable provenance reference (content hash, source URI, external id). */
+  provenance: z.string().min(1).max(500).optional(),
 });
 
 const PatchDocumentBody = z.object({
   status: DocumentStatus.optional(),
   claim_count: z.number().int().nonnegative().optional(),
+  provenance: z.string().min(1).max(500).optional(),
 });
 
 function publish(eventsApi: EventsApi | undefined, fn: () => void): void {
@@ -45,6 +48,7 @@ function toApi(row: typeof documentsTable.$inferSelect) {
     type: row.type,
     status: row.status,
     claim_count: row.claim_count,
+    ...(row.provenance != null && { provenance: row.provenance }),
     ingested_at: row.ingested_at.toISOString(),
   };
 }
@@ -104,6 +108,7 @@ export function createDocumentsRouter(db: Db, eventsApi?: EventsApi) {
       .set({
         ...(body.status !== undefined && { status: body.status }),
         ...(body.claim_count !== undefined && { claim_count: body.claim_count }),
+        ...(body.provenance !== undefined && { provenance: body.provenance }),
       })
       .where(eq(documentsTable.id, id))
       .returning();

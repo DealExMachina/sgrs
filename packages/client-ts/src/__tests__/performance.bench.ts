@@ -59,6 +59,7 @@ describe("Client Performance Benchmarks", () => {
         fetch: createMockFetch(0),
       });
       await client.scopes.create({
+        id: "test-scope",
         name: "Test Scope",
         tag: "test",
         state: "active",
@@ -127,6 +128,7 @@ describe("Client Performance Benchmarks", () => {
         fetch: createMockFetch(50),
       });
       await client.scopes.create({
+        id: "test-scope",
         name: "Test Scope",
         tag: "test",
         state: "active",
@@ -156,6 +158,7 @@ describe("Client Performance Benchmarks", () => {
 
       for (let i = 0; i < 10; i++) {
         await client.scopes.create({
+          id: `scope-${i}`,
           name: `Scope ${i}`,
           tag: "test",
           state: "active",

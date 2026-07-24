@@ -88,6 +88,7 @@ describe("Client Integration Tests", () => {
 
       // Create new scope
       const createResult = await client.scopes.create({
+        id: "horizon-ma-2025",
         name: "Project Horizon: TechCorp Acquisition",
         tag: "m&a",
         state: "active",
@@ -286,6 +287,7 @@ describe("Client Integration Tests", () => {
       });
 
       const result = await client.scopes.create({
+        id: "x-scope",
         name: "x", // too short
         tag: "test",
         state: "active",

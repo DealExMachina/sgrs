@@ -237,17 +237,37 @@ All routes are scoped to tenant and scope:
 
 ```
 GET /api/scopes              — List all scopes for tenant
-POST /api/scopes             — Create new scope
+POST /api/scopes             — Create new scope (id is required in the body)
 
 GET /api/claims/:scopeId     — List claims
+POST /api/claims             — Create claim (kernel); supports document_id provenance link
 GET /api/drifts/:scopeId     — List drifts
 GET /api/contradictions/:scopeId — List contradictions
-PATCH /api/contradictions/:id — Resolve contradiction (HITL)
+POST /api/contradictions     — Create contradiction (comparator agent)
+PATCH /api/contradictions/:id — Resolve/defer contradiction (HITL)
 GET /api/risks/:scopeId      — List risks
+POST /api/risks              — Create risk; supports document_id provenance link
 GET /api/documents/:scopeId  — List documents
+POST /api/documents          — Register document; supports provenance reference
 GET /api/finality/:scopeId   — Get finality status
+POST /api/finality/:scopeId  — Upsert finality status (kernel)
 GET /api/epochs/:scopeId/latest — Get latest epoch summary
+POST /api/epochs             — Create epoch summary (kernel)
+POST /api/epochs/:id/comments — Add HITL comment to an epoch summary
 ```
+
+### Provenance & traceability
+
+Documents carry a `provenance` reference (content hash, source URI, or external
+id). Claims and risks carry an optional `document_id` linking them back to the
+originating `documents.id`, so every extracted claim/risk is traceable to its
+source document rather than relying on free-text `source` matching. See
+[`examples/scenario-app`](./examples/scenario-app/README.md) for an end-to-end
+demonstration (including a `BotHITL` reviewer that resolves contradictions and
+lifts vetoes).
+
+> Note: `POST /api/scopes` requires a caller-supplied `id` (a lowercase slug).
+> The `@sgrs/client-ts` `scopes.create` type reflects this.
 
 ## Event Types
 

@@ -242,9 +242,15 @@ export class Client {
       return this.request("GET", `/api/scopes/${encodeURIComponent(scopeId)}`);
     },
 
-    /** Create a new scope. The server assigns the id. */
+    /**
+     * Create a new scope.
+     *
+     * The caller supplies the scope `id` — a human-readable slug (lowercase
+     * a-z, 0-9, hyphens; e.g. `acme-vendor-acquisition`). This matches the
+     * server contract: `POST /api/scopes` requires `id` in the request body.
+     */
     create: async (
-      body: Omit<schema.Scope, "id" | "created_at" | "updated_at">,
+      body: Omit<schema.Scope, "created_at" | "updated_at">,
     ): Promise<ApiResponse<schema.Scope>> => {
       return this.request("POST", "/api/scopes", body);
     },

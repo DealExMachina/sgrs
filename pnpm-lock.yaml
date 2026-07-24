@@ -158,6 +158,25 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  examples/scenario-app:
+    dependencies:
+      '@sgrs/client-ts':
+        specifier: workspace:*
+        version: link:../../packages/client-ts
+    devDependencies:
+      '@sgrs/api-schema':
+        specifier: workspace:*
+        version: link:../../packages/api-schema
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      tsx:
+        specifier: 4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/api-schema:
     dependencies:
       zod:

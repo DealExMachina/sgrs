@@ -167,6 +167,7 @@ export const claims = pgTable("claims", {
   tenant_id: text("tenant_id").notNull(),
   text: text("text").notNull(),
   source: text("source").notNull(),
+  document_id: uuid("document_id"),     // optional provenance link to documents.id
   dimension: text("dimension"),         // FinalityDimension value, nullable
   confidence: real("confidence").notNull(),
   round: integer("round").notNull().default(0),
@@ -235,6 +236,7 @@ export const risks = pgTable("risks", {
   level: riskLevelEnum("level").notNull(),
   category: text("category"),
   source: text("source").notNull(),
+  document_id: uuid("document_id"),     // optional provenance link to documents.id
   round: integer("round").notNull().default(0),
   created_at: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -255,6 +257,12 @@ export const documents = pgTable("documents", {
   type: text("type").notNull(),          // "pdf" | "docx" | "xlsx" | "txt" | "url"
   status: documentStatusEnum("status").notNull().default("pending"),
   claim_count: integer("claim_count").notNull().default(0),
+  /**
+   * Stable provenance reference for traceability — a content hash, source URI,
+   * or external document id (e.g. "sha256:…", "s3://…", "https://…").
+   * Claims and risks link back to this row via their `document_id`.
+   */
+  provenance: text("provenance"),
   ingested_at: timestamp("ingested_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date()),
