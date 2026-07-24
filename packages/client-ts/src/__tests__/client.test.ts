@@ -432,6 +432,127 @@ describe("Client", () => {
     });
   });
 
+  describe("governance read helpers", () => {
+    it("claims.list should GET /api/claims/:scopeId", async () => {
+      const claims = [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          scope_id: "deal-horizon",
+          text: "ARR grew",
+          source: "memo.pdf",
+          confidence: 0.9,
+          round: 1,
+          created_at: new Date().toISOString(),
+        },
+      ];
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => claims,
+      });
+
+      const result = await client.claims.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/claims/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("contradictions.list should GET /api/contradictions/:scopeId", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      const result = await client.contradictions.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/contradictions/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("risks.list should GET /api/risks/:scopeId", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      const result = await client.risks.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/risks/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("documents.list should GET /api/documents/:scopeId", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      const result = await client.documents.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/documents/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("epochs.latest should GET /api/epochs/:scopeId/latest", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "55555555-5555-5555-5555-555555555555",
+          scope_id: "deal-horizon",
+          round: 2,
+          summary_text: "Converging",
+          claim_count: 3,
+          drift_count: 0,
+          contradiction_count: 1,
+          risk_count: 1,
+          score: 0.8,
+          state: "near-final",
+          comments: [],
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.epochs.latest("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/epochs/deal-horizon/latest",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("should URL-encode the scopeId in read helpers", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      await client.claims.list("scope/with/slashes");
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("scope%2Fwith%2Fslashes"),
+        expect.anything(),
+      );
+    });
+  });
+
   describe("request headers", () => {
     it("should include Authorization header when apiKey is set", async () => {
       const clientWithKey = new Client({
