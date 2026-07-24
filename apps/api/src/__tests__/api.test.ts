@@ -177,6 +177,120 @@ describe("Scope CRUD", () => {
     }
   });
 
+  it("applies default values when optional fields are omitted", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      const createRes = await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "defaults-scope", name: "Defaults", tag: "DEF" },
+        }),
+      );
+      expect(createRes.status).toBe(201);
+      const created = await createRes.json() as {
+        state: string;
+        score: number;
+        cycles: number;
+        created_at: string;
+        updated_at: string;
+      };
+      // Optional fields fall back to schema defaults
+      expect(created.state).toBe("active");
+      expect(created.score).toBe(0);
+      expect(created.cycles).toBe(0);
+      // Timestamps are serialised as ISO-8601 strings
+      expect(() => new Date(created.created_at).toISOString()).not.toThrow();
+      expect(created.created_at).toBe(created.updated_at);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("rejects a create with an invalid body (400)", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      // score above the allowed range [0, 1]
+      const badScore = await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "bad-score", name: "Bad", tag: "B", score: 5 },
+        }),
+      );
+      expect(badScore.status).toBe(400);
+
+      // id violating the lowercase-slug rule
+      const badId = await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "Not A Slug", name: "Bad", tag: "B" },
+        }),
+      );
+      expect(badId.status).toBe(400);
+
+      // missing required name
+      const missingName = await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "no-name", tag: "B" },
+        }),
+      );
+      expect(missingName.status).toBe(400);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("fully replaces a scope via PUT", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "put-me", name: "Original", tag: "ORIG", score: 0.1, cycles: 1 },
+        }),
+      );
+
+      const putRes = await app.request(
+        req("PUT", "/api/scopes/put-me", {
+          tenant: "acme",
+          body: { name: "Replaced", tag: "NEW", state: "resolved", score: 0.9, cycles: 7 },
+        }),
+      );
+      expect(putRes.status).toBe(200);
+      const replaced = await putRes.json() as {
+        id: string;
+        name: string;
+        tag: string;
+        state: string;
+        score: number;
+        cycles: number;
+      };
+      expect(replaced.id).toBe("put-me");
+      expect(replaced.name).toBe("Replaced");
+      expect(replaced.tag).toBe("NEW");
+      expect(replaced.state).toBe("resolved");
+      expect(replaced.score).toBeCloseTo(0.9);
+      expect(replaced.cycles).toBe(7);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("returns 404 when PUT targets a missing scope", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      const res = await app.request(
+        req("PUT", "/api/scopes/ghost", {
+          tenant: "acme",
+          body: { name: "Ghost", tag: "G", state: "active", score: 0, cycles: 0 },
+        }),
+      );
+      expect(res.status).toBe(404);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("lists only scopes belonging to the requesting tenant", async () => {
     const { app, cleanup } = await makeApp();
     try {
@@ -312,6 +426,71 @@ describe("Scope CRUD", () => {
         req("GET", "/api/scopes/delete-me", { tenant: "acme" })
       );
       expect(getRes.status).toBe(404);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+// ─── Provenance & traceability ────────────────────────────────────────────────
+
+describe("Provenance & traceability", () => {
+  it("stores document provenance and links claims/risks by document_id", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "prov-scope", name: "Prov", tag: "P" },
+        }),
+      );
+
+      // Put a document with a stable provenance reference.
+      const provenance = "sha256:deadbeef";
+      const docRes = await app.request(
+        req("POST", "/api/documents", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", name: "Deal.pdf", type: "pdf", status: "processing", provenance },
+        }),
+      );
+      expect(docRes.status).toBe(201);
+      const doc = await docRes.json() as { id: string; provenance?: string };
+      expect(doc.provenance).toBe(provenance);
+
+      // A claim carries the document_id back to its source.
+      const claimRes = await app.request(
+        req("POST", "/api/claims", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", text: "Price is $10M.", source: "Deal.pdf", document_id: doc.id, confidence: 0.9 },
+        }),
+      );
+      expect(claimRes.status).toBe(201);
+
+      // A risk also links to the document.
+      const riskRes = await app.request(
+        req("POST", "/api/risks", {
+          tenant: "acme",
+          body: { scope_id: "prov-scope", description: "Concentration risk.", level: "high", source: "Deal.pdf", document_id: doc.id },
+        }),
+      );
+      expect(riskRes.status).toBe(201);
+
+      // Read back and assert the provenance link round-trips.
+      const claims = await (await app.request(
+        req("GET", "/api/claims/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ document_id?: string }>;
+      expect(claims).toHaveLength(1);
+      expect(claims[0]!.document_id).toBe(doc.id);
+
+      const risks = await (await app.request(
+        req("GET", "/api/risks/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ document_id?: string }>;
+      expect(risks[0]!.document_id).toBe(doc.id);
+
+      const docs = await (await app.request(
+        req("GET", "/api/documents/prov-scope", { tenant: "acme" })
+      )).json() as Array<{ provenance?: string }>;
+      expect(docs[0]!.provenance).toBe(provenance);
     } finally {
       await cleanup();
     }
