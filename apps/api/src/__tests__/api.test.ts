@@ -555,6 +555,50 @@ describe("Finality", () => {
     }
   });
 
+  it("rounds per_dimension floats to six decimal places", async () => {
+    const { app, cleanup } = await makeApp();
+    try {
+      await app.request(
+        req("POST", "/api/scopes", {
+          tenant: "acme",
+          body: { id: "float-scope", name: "Float", tag: "F" },
+        }),
+      );
+
+      const noisy = {
+        ...FINALITY_BODY,
+        per_dimension: {
+          claim_confidence: 0.49999999999999994,
+          contradiction_resolution: 0.5600000000000001,
+        },
+      };
+
+      const upsertRes = await app.request(
+        req("POST", "/api/finality/float-scope", {
+          tenant: "acme",
+          body: noisy,
+        }),
+      );
+      expect(upsertRes.status).toBe(200);
+      const posted = await upsertRes.json() as {
+        per_dimension: Record<string, number>;
+      };
+      expect(posted.per_dimension.claim_confidence).toBe(0.5);
+      expect(posted.per_dimension.contradiction_resolution).toBe(0.56);
+
+      const getRes = await app.request(
+        req("GET", "/api/finality/float-scope", { tenant: "acme" }),
+      );
+      const fetched = await getRes.json() as {
+        per_dimension: Record<string, number>;
+      };
+      expect(fetched.per_dimension.claim_confidence).toBe(0.5);
+      expect(fetched.per_dimension.contradiction_resolution).toBe(0.56);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("is idempotent — second POST with same data returns same result", async () => {
     const { app, cleanup } = await makeApp();
     try {
