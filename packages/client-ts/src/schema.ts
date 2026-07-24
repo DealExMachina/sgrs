@@ -20,6 +20,17 @@ export {
   FinalityDimension,
   FinalityStatus,
   FinalityCertificate,
+  // Governance domain (read models)
+  Claim,
+  Contradiction,
+  ContradictionSeverity,
+  ContradictionStatus,
+  Risk,
+  RiskLevel,
+  SgrsDocument,
+  DocumentStatus,
+  EpochSummary,
+  EpochSummaryComment,
   // Version
   API_VERSION,
   // Ingest

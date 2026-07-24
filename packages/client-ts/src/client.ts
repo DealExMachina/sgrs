@@ -406,6 +406,56 @@ export class Client {
       return this.request("POST", "/api/ingest", body);
     },
   };
+
+  /**
+   * Claims API — read-only access to extracted factual assertions.
+   */
+  claims = {
+    /** List claims extracted for a scope (newest-first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.Claim[]>> => {
+      return this.request("GET", `/api/claims/${encodeURIComponent(scopeId)}`);
+    },
+  };
+
+  /**
+   * Contradictions API — read-only access to conflicting claim pairs.
+   */
+  contradictions = {
+    /** List contradictions detected for a scope (open/critical first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.Contradiction[]>> => {
+      return this.request("GET", `/api/contradictions/${encodeURIComponent(scopeId)}`);
+    },
+  };
+
+  /**
+   * Risks API — read-only access to identified risk items.
+   */
+  risks = {
+    /** List risks identified for a scope (critical first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.Risk[]>> => {
+      return this.request("GET", `/api/risks/${encodeURIComponent(scopeId)}`);
+    },
+  };
+
+  /**
+   * Documents API — read-only access to ingested source material.
+   */
+  documents = {
+    /** List documents ingested into a scope (newest-first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.SgrsDocument[]>> => {
+      return this.request("GET", `/api/documents/${encodeURIComponent(scopeId)}`);
+    },
+  };
+
+  /**
+   * Epochs API — read-only access to per-round narrative summaries.
+   */
+  epochs = {
+    /** Get the latest epoch summary for a scope. */
+    latest: async (scopeId: string): Promise<ApiResponse<schema.EpochSummary>> => {
+      return this.request("GET", `/api/epochs/${encodeURIComponent(scopeId)}/latest`);
+    },
+  };
 }
 
 /**
