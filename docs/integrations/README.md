@@ -41,11 +41,11 @@ npm install @sgrs/client-ts     # TypeScript (Mastra, Agentica)
 pip install sgrs-client         # Python (LangGraph, Pydantic AI)
 ```
 
-> The TypeScript client (`@sgrs/client-ts`) covers the full REST surface plus
-> NATS events. The Python client (`sgrs-client`) covers scopes, models,
-> finality, and NATS events; for `POST /api/ingest` and `GET /api/claims/...`
-> the Python guides call the REST endpoints directly with `httpx`, which keeps
-> them dependency-light and forward-compatible.
+> Both clients cover the same surface: scopes, models, finality, agents,
+> health, ingest, the governance read helpers (claims, contradictions, risks,
+> documents, epochs), and NATS events. The one route neither SDK wraps yet is
+> claim *creation* (`POST /api/claims`), so the swarm-participant examples make a
+> thin HTTP call for that single step.
 
 ---
 

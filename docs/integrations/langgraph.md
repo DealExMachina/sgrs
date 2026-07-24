@@ -7,25 +7,25 @@ graphs. This guide wires SGRS into a LangGraph agent in two ways: as a
 ## Install
 
 ```bash
-pip install langgraph langchain-core langchain-openai sgrs-client httpx
+pip install langgraph langchain-core langchain-openai sgrs-client
 # real-time swarm events:
 pip install "sgrs-client[nats]"
 ```
 
-Set the connection details once:
+Create one SGRS client. Pass `tenant_id` — the SDK sends it as `X-Tenant-ID`
+on every authenticated request:
 
 ```python
 import os
+from sgrs_client import create_client
 
-SGRS_BASE_URL = os.environ.get("SGRS_BASE_URL", "http://localhost:3003")
 SGRS_TENANT = os.environ.get("SGRS_TENANT", "acme")
-SGRS_API_KEY = os.environ.get("SGRS_API_KEY")  # optional
 
-def sgrs_headers() -> dict[str, str]:
-    headers = {"X-Tenant-ID": SGRS_TENANT}
-    if SGRS_API_KEY:
-        headers["Authorization"] = f"Bearer {SGRS_API_KEY}"
-    return headers
+client = create_client(
+    base_url=os.environ.get("SGRS_BASE_URL", "http://localhost:3003"),
+    tenant_id=SGRS_TENANT,
+    api_key=os.environ.get("SGRS_API_KEY"),  # optional
+)
 ```
 
 ---
@@ -37,31 +37,25 @@ facts, skipping any claim entangled in an open contradiction. Expose it as a
 LangGraph/LangChain tool so the model can call it while reasoning.
 
 ```python
-import asyncio
-import httpx
 from langchain_core.tools import tool
 
-async def fetch_governed_claims(scope_id: str, min_confidence: float = 0.6) -> list[dict]:
-    async with httpx.AsyncClient(base_url=SGRS_BASE_URL, headers=sgrs_headers()) as http:
-        claims_res, contra_res = await asyncio.gather(
-            http.get(f"/api/claims/{scope_id}"),
-            http.get(f"/api/contradictions/{scope_id}"),
-        )
-    claims_res.raise_for_status()
-    claims = claims_res.json()
+async def fetch_governed_claims(scope_id: str, min_confidence: float = 0.6):
+    claims_res = await client.list_claims(scope_id)
+    contra_res = await client.list_contradictions(scope_id)
+    claims = claims_res.data if claims_res.ok else []
 
     # Drop claims whose source is currently contradicted.
     contradicted_sources: set[str] = set()
-    if contra_res.status_code == 200:
-        for c in contra_res.json():
-            if c.get("status") == "open":
-                contradicted_sources.update({c.get("source_a"), c.get("source_b")})
+    if contra_res.ok:
+        for c in contra_res.data:
+            if c.status == "open":
+                contradicted_sources.update({c.source_a, c.source_b})
 
     return [
         claim
         for claim in claims
-        if claim["confidence"] >= min_confidence
-        and claim["source"] not in contradicted_sources
+        if claim.confidence >= min_confidence
+        and claim.source not in contradicted_sources
     ]
 
 
@@ -76,10 +70,14 @@ async def sgrs_retriever(scope_id: str, min_confidence: float = 0.6) -> str:
     if not claims:
         return "No governed claims above the confidence threshold yet."
     return "\n".join(
-        f"- ({c['confidence']:.2f}) {c['text']}  [source: {c['source']}]"
+        f"- ({c.confidence:.2f}) {c.text}  [source: {c.source}]"
         for c in claims
     )
 ```
+
+`client.list_claims` / `list_contradictions` return an `ApiResponse` with
+`.ok` and `.data` (a list of typed `Claim` / `Contradiction` models), so you
+work with attributes (`claim.confidence`) rather than raw dicts.
 
 Bind the tool to a model and drop it into a LangGraph `ReAct`-style agent:
 
@@ -112,19 +110,19 @@ document and let the swarm populate it (claims appear asynchronously, usually in
 30–90s):
 
 ```python
+from sgrs_client import IngestDocumentRequest
+
 async def ingest(scope_id: str, name: str, text: str) -> None:
-    async with httpx.AsyncClient(base_url=SGRS_BASE_URL, headers=sgrs_headers()) as http:
-        res = await http.post("/api/ingest", json={
-            "scope_id": scope_id, "name": name, "type": "txt", "text": text,
-        })
-        res.raise_for_status()  # 202 Accepted
+    await client.ingest_document(
+        IngestDocumentRequest(scope_id=scope_id, name=name, type="txt", text=text)
+    )  # 202 Accepted
 ```
 
 **Why "governed"?** Unlike a vector-store retriever that returns whatever is
 semantically nearest, `sgrs_retriever` only surfaces claims the swarm has scored
 and cross-checked. You can tighten it further by gating on finality — only trust
-the scope once `GET /api/finality/{scope_id}` reports `state` of `near-final` or
-`resolved`.
+the scope once `client.get_finality_status(scope_id)` reports `state` of
+`near-final` or `resolved`.
 
 ---
 
@@ -134,9 +132,11 @@ Here the LangGraph agent joins the swarm as an **external** worker. It listens
 for tasks on a NATS queue group, runs its graph, contributes claims back into the
 scope, and — most importantly — halts the moment the kernel vetoes the scope.
 
+Enable real-time events by giving the client a `nats` config (reuse the same
+`create_client` from setup, adding `nats=`):
+
 ```python
 import asyncio
-import contextlib
 import httpx
 from sgrs_client import create_client, NatsConfig
 
@@ -144,13 +144,19 @@ TENANT = SGRS_TENANT
 vetoed_scopes: set[str] = set()
 
 client = create_client(
-    base_url=SGRS_BASE_URL,
-    api_key=SGRS_API_KEY,
+    base_url=os.environ.get("SGRS_BASE_URL", "http://localhost:3003"),
+    tenant_id=TENANT,
+    api_key=os.environ.get("SGRS_API_KEY"),
     nats=NatsConfig(servers=os.environ.get("SGRS_NATS", "nats://localhost:4222")),
 )
 
+# Claim creation (POST /api/claims) is the one route not yet wrapped by the SDK,
+# so contribute claims with a thin HTTP call that reuses the client's config.
 async def publish_claim(scope_id: str, text: str, confidence: float) -> None:
-    async with httpx.AsyncClient(base_url=SGRS_BASE_URL, headers=sgrs_headers()) as http:
+    headers = {"X-Tenant-ID": TENANT}
+    if client.api_key:
+        headers["Authorization"] = f"Bearer {client.api_key}"
+    async with httpx.AsyncClient(base_url=client.base_url, headers=headers) as http:
         await http.post("/api/claims", json={
             "scope_id": scope_id,
             "text": text,

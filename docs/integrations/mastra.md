@@ -13,9 +13,11 @@ npm install @mastra/core @sgrs/client-ts zod
 npm install nats
 ```
 
-Create one shared SGRS client. `@sgrs/client-ts` covers ingest, finality,
-scopes, and NATS events; for claims and contradictions we call the REST
-endpoints directly with `fetch` (they are not yet wrapped by the SDK).
+Create one shared SGRS client. `@sgrs/client-ts` covers scopes, models,
+finality, agents, ingest, the governance read helpers (claims, contradictions,
+risks, documents, epochs), and NATS events. The only route it does not wrap is
+claim *creation* (`POST /api/claims`), so the swarm-participant section below
+keeps a thin `fetch` + `sgrsHeaders()` for that one call.
 
 ```ts
 // src/sgrs/client.ts
@@ -39,17 +41,6 @@ export function sgrsHeaders(): Record<string, string> {
   if (API_KEY) h.Authorization = `Bearer ${API_KEY}`;
   return h;
 }
-
-export interface Claim {
-  id: string;
-  scope_id: string;
-  text: string;
-  source: string;
-  confidence: number;
-  dimension?: string;
-  round: number;
-  created_at: string;
-}
 ```
 
 ---
@@ -63,7 +54,7 @@ an open contradiction. Attach it to an agent so the model can call it.
 // src/mastra/tools/sgrs-retriever.ts
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { BASE_URL, sgrsHeaders, type Claim } from "../../sgrs/client";
+import { sgrs } from "../../sgrs/client";
 
 export const sgrsRetrieverTool = createTool({
   id: "sgrs-retriever",
@@ -85,16 +76,15 @@ export const sgrsRetrieverTool = createTool({
     ),
   }),
   execute: async ({ scopeId, minConfidence }) => {
-    const headers = sgrsHeaders();
     const [claimsRes, contraRes] = await Promise.all([
-      fetch(`${BASE_URL}/api/claims/${scopeId}`, { headers }),
-      fetch(`${BASE_URL}/api/contradictions/${scopeId}`, { headers }),
+      sgrs.claims.list(scopeId),
+      sgrs.contradictions.list(scopeId),
     ]);
-    const claims: Claim[] = claimsRes.ok ? await claimsRes.json() : [];
+    const claims = claimsRes.ok ? (claimsRes.data ?? []) : [];
 
     const contradicted = new Set<string>();
     if (contraRes.ok) {
-      for (const c of (await contraRes.json()) as Array<Record<string, string>>) {
+      for (const c of contraRes.data ?? []) {
         if (c.status === "open") {
           contradicted.add(c.source_a);
           contradicted.add(c.source_b);
@@ -110,6 +100,9 @@ export const sgrsRetrieverTool = createTool({
   },
 });
 ```
+
+`sgrs.claims.list` / `sgrs.contradictions.list` return an `ApiResponse<T[]>`
+with `ok` and typed `data`, so no manual `fetch`, headers, or JSON casting.
 
 ```ts
 // src/mastra/agents/analyst.ts

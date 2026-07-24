@@ -23,10 +23,21 @@ Shared SGRS config:
 
 ```ts
 // src/sgrs/config.ts
+import { createClient } from "@sgrs/client-ts";
+
 export const TENANT = process.env.SGRS_TENANT ?? "acme";
 export const BASE_URL = process.env.SGRS_BASE_URL ?? "http://localhost:3003";
 const API_KEY = process.env.SGRS_API_KEY;
 
+export const sgrs = createClient({
+  baseUrl: BASE_URL,
+  tenantId: TENANT,
+  apiKey: API_KEY,
+  ...(process.env.SGRS_NATS && { nats: { servers: process.env.SGRS_NATS } }),
+});
+
+// Only claim *creation* (POST /api/claims) is not wrapped by the SDK; the
+// swarm-participant section uses these headers for that one call.
 export function sgrsHeaders(): Record<string, string> {
   const h: Record<string, string> = { "X-Tenant-ID": TENANT };
   if (API_KEY) h.Authorization = `Bearer ${API_KEY}`;
@@ -45,13 +56,12 @@ filtering logic (confidence threshold + contradiction filtering).
 
 ```ts
 // src/sgrs/SgrsRetriever.ts
-import { BASE_URL, sgrsHeaders } from "./config";
+import { sgrs } from "./config";
 
 interface Claim {
   text: string;
   source: string;
   confidence: number;
-  dimension?: string;
 }
 
 export class SgrsRetriever {
@@ -65,17 +75,16 @@ export class SgrsRetriever {
     minConfidence?: number;
   }): Promise<Claim[]> {
     const minConfidence = props.minConfidence ?? 0.6;
-    const headers = sgrsHeaders();
 
     const [claimsRes, contraRes] = await Promise.all([
-      fetch(`${BASE_URL}/api/claims/${props.scopeId}`, { headers }),
-      fetch(`${BASE_URL}/api/contradictions/${props.scopeId}`, { headers }),
+      sgrs.claims.list(props.scopeId),
+      sgrs.contradictions.list(props.scopeId),
     ]);
-    const claims: Claim[] = claimsRes.ok ? await claimsRes.json() : [];
+    const claims = claimsRes.ok ? (claimsRes.data ?? []) : [];
 
     const contradicted = new Set<string>();
     if (contraRes.ok) {
-      for (const c of (await contraRes.json()) as Array<Record<string, string>>) {
+      for (const c of contraRes.data ?? []) {
         if (c.status === "open") {
           contradicted.add(c.source_a);
           contradicted.add(c.source_b);
@@ -83,17 +92,15 @@ export class SgrsRetriever {
       }
     }
 
-    return claims.filter(
-      (c) => c.confidence >= minConfidence && !contradicted.has(c.source),
-    );
+    return claims
+      .filter((c) => c.confidence >= minConfidence && !contradicted.has(c.source))
+      .map((c) => ({ text: c.text, source: c.source, confidence: c.confidence }));
   }
 
   /** Convergence status of a scope: is its knowledge stable yet? */
   async getFinality(props: { scopeId: string }): Promise<unknown> {
-    const res = await fetch(`${BASE_URL}/api/finality/${props.scopeId}`, {
-      headers: sgrsHeaders(),
-    });
-    return res.ok ? res.json() : { state: "unknown" };
+    const res = await sgrs.finality.status(props.scopeId);
+    return res.ok ? res.data : { state: "unknown" };
   }
 }
 ```
@@ -148,6 +155,9 @@ const ingestController = assertHttpController({
 // add `ingestController` to the `controllers` array above
 ```
 
+> For programmatic ingestion outside function calling, the SDK also exposes
+> `await sgrs.ingest.document({ scope_id, name, type: "txt", text })` directly.
+>
 > The bundled OpenAPI document currently describes `/api/ingest` plus the
 > `/admin/*` and `/internals/*` surfaces. The public read routes
 > (`/api/claims`, `/api/contradictions`, `/api/finality`) are best exposed via
@@ -165,20 +175,15 @@ Agentica is a conversation/function-calling engine, so to act as a long-running
 consume tasks from a queue group, run the Agentica agent to produce a finding,
 publish it as a claim, and halt on veto.
 
+Reuse the shared `sgrs` client from `config.ts` — set `SGRS_NATS` so its NATS
+transport (and therefore `sgrs.events`) is active.
+
 ```ts
 // src/swarm/worker.ts
-import { createClient } from "@sgrs/client-ts";
 import { agent } from "../agent";
-import { TENANT, BASE_URL, sgrsHeaders } from "../sgrs/config";
+import { sgrs, TENANT, BASE_URL, sgrsHeaders } from "../sgrs/config";
 
 const vetoed = new Set<string>();
-
-const sgrs = createClient({
-  baseUrl: BASE_URL,
-  tenantId: TENANT,
-  apiKey: process.env.SGRS_API_KEY,
-  nats: { servers: process.env.SGRS_NATS ?? "nats://localhost:4222" },
-});
 
 async function publishClaim(scopeId: string, text: string, confidence: number) {
   await fetch(`${BASE_URL}/api/claims`, {

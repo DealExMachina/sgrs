@@ -8,30 +8,29 @@ participant** worker.
 ## Install
 
 ```bash
-pip install pydantic-ai sgrs-client httpx
+pip install pydantic-ai sgrs-client
 # real-time swarm events:
 pip install "sgrs-client[nats]"
 ```
 
-Define a dependencies dataclass so the SGRS connection is injected (no globals):
+Define a dependencies dataclass that injects the SGRS **client** (no globals).
+Pass `tenant_id` — the SDK sends it as `X-Tenant-ID` automatically:
 
 ```python
 import os
 from dataclasses import dataclass
-import httpx
+from sgrs_client import Client, create_client
 
 @dataclass
 class SgrsDeps:
-    http: httpx.AsyncClient        # pre-configured with base_url + headers
+    client: Client
     tenant: str
 
-def make_http() -> httpx.AsyncClient:
-    headers = {"X-Tenant-ID": os.environ.get("SGRS_TENANT", "acme")}
-    if os.environ.get("SGRS_API_KEY"):
-        headers["Authorization"] = f"Bearer {os.environ['SGRS_API_KEY']}"
-    return httpx.AsyncClient(
+def make_client() -> Client:
+    return create_client(
         base_url=os.environ.get("SGRS_BASE_URL", "http://localhost:3003"),
-        headers=headers,
+        tenant_id=os.environ.get("SGRS_TENANT", "acme"),
+        api_key=os.environ.get("SGRS_API_KEY"),  # optional
     )
 ```
 
@@ -62,37 +61,41 @@ async def sgrs_retriever(
     min_confidence: float = 0.6,
 ) -> str:
     """Retrieve governed, contradiction-free claims from an SGRS scope."""
-    claims_res = await ctx.deps.http.get(f"/api/claims/{scope_id}")
-    claims_res.raise_for_status()
-    claims = claims_res.json()
+    sgrs = ctx.deps.client
+    claims_res = await sgrs.list_claims(scope_id)
+    contra_res = await sgrs.list_contradictions(scope_id)
+    claims = claims_res.data if claims_res.ok else []
 
-    contra_res = await ctx.deps.http.get(f"/api/contradictions/{scope_id}")
     contradicted: set[str] = set()
-    if contra_res.status_code == 200:
-        for c in contra_res.json():
-            if c.get("status") == "open":
-                contradicted.update({c.get("source_a"), c.get("source_b")})
+    if contra_res.ok:
+        for c in contra_res.data:
+            if c.status == "open":
+                contradicted.update({c.source_a, c.source_b})
 
     vetted = [
         c for c in claims
-        if c["confidence"] >= min_confidence and c["source"] not in contradicted
+        if c.confidence >= min_confidence and c.source not in contradicted
     ]
     if not vetted:
         return "No governed claims above the confidence threshold yet."
     return "\n".join(
-        f"- ({c['confidence']:.2f}) {c['text']}  [source: {c['source']}]"
+        f"- ({c.confidence:.2f}) {c.text}  [source: {c.source}]"
         for c in vetted
     )
 ```
 
-Run the agent, injecting the SGRS dependency at call time:
+`list_claims` / `list_contradictions` return an `ApiResponse` with `.ok` and
+`.data` (typed `Claim` / `Contradiction` models).
+
+Run the agent, injecting the SGRS dependency at call time (the client is an
+async context manager):
 
 ```python
 import asyncio
 
 async def main():
-    async with make_http() as http:
-        deps = SgrsDeps(http=http, tenant=os.environ.get("SGRS_TENANT", "acme"))
+    async with make_client() as sgrs:
+        deps = SgrsDeps(client=sgrs, tenant=os.environ.get("SGRS_TENANT", "acme"))
         result = await agent.run(
             "Summarize what we know about the acme-q4 deal. scope_id=acme-q4",
             deps=deps,
@@ -102,22 +105,24 @@ async def main():
 asyncio.run(main())
 ```
 
-**Optional: ingest first.** Add a second tool (or a plain helper) that posts to
-`/api/ingest` when a scope is empty; claims appear asynchronously (30–90s):
+**Optional: ingest first.** Add a second tool (or a plain helper) that ingests a
+document when a scope is empty; claims appear asynchronously (30–90s):
 
 ```python
+from sgrs_client import IngestDocumentRequest
+
 @agent.tool
 async def sgrs_ingest(ctx: RunContext[SgrsDeps], scope_id: str, name: str, text: str) -> str:
     """Queue a document into an SGRS scope for governance."""
-    res = await ctx.deps.http.post("/api/ingest", json={
-        "scope_id": scope_id, "name": name, "type": "txt", "text": text,
-    })
-    res.raise_for_status()
+    await ctx.deps.client.ingest_document(
+        IngestDocumentRequest(scope_id=scope_id, name=name, type="txt", text=text)
+    )
     return "Queued. Claims will appear once the swarm processes the document."
 ```
 
 Gate on convergence when you need stability guarantees: only trust a scope after
-`GET /api/finality/{scope_id}` returns `state` `near-final` or `resolved`.
+`client.get_finality_status(scope_id)` returns `state` `near-final` or
+`resolved`.
 
 ---
 
@@ -127,8 +132,13 @@ The Pydantic AI agent joins the swarm as an **external** worker. It processes
 tasks from a NATS queue group, publishes its reviewed output as claims, and
 halts on veto.
 
+Build the client with a `nats` config so `client.events` is active. Claim
+creation (`POST /api/claims`) is the one route not yet wrapped by the SDK, so
+contribute claims with a thin HTTP call that reuses the client's config.
+
 ```python
 import asyncio
+import httpx
 from sgrs_client import create_client, NatsConfig
 
 TENANT = os.environ.get("SGRS_TENANT", "acme")
@@ -136,50 +146,55 @@ vetoed: set[str] = set()
 
 client = create_client(
     base_url=os.environ.get("SGRS_BASE_URL", "http://localhost:3003"),
+    tenant_id=TENANT,
     api_key=os.environ.get("SGRS_API_KEY"),
     nats=NatsConfig(servers=os.environ.get("SGRS_NATS", "nats://localhost:4222")),
 )
 
-async def publish_claim(http: httpx.AsyncClient, scope_id: str, text: str, confidence: float):
-    await http.post("/api/claims", json={
-        "scope_id": scope_id,
-        "text": text,
-        "source": "pydantic-ai-proposer",   # this agent's identity
-        "confidence": confidence,
-        "dimension": "claim_confidence",
-    })
+async def publish_claim(scope_id: str, text: str, confidence: float):
+    headers = {"X-Tenant-ID": TENANT}
+    if client.api_key:
+        headers["Authorization"] = f"Bearer {client.api_key}"
+    async with httpx.AsyncClient(base_url=client.base_url, headers=headers) as http:
+        await http.post("/api/claims", json={
+            "scope_id": scope_id,
+            "text": text,
+            "source": "pydantic-ai-proposer",   # this agent's identity
+            "confidence": confidence,
+            "dimension": "claim_confidence",
+        })
 
 async def main():
-    async with make_http() as http:
-        deps = SgrsDeps(http=http, tenant=TENANT)
-        await client.connect()
+    deps = SgrsDeps(client=client, tenant=TENANT)
+    await client.connect()
 
-        # CRITICAL PATH: honor the governance veto.
-        await client.events.on_veto_activated(TENANT, lambda ev, s: vetoed.add(ev.scope_id))
-        await client.events.on_veto_lifted(TENANT, lambda ev, s: vetoed.discard(ev.scope_id))
+    # CRITICAL PATH: honor the governance veto.
+    await client.events.on_veto_activated(TENANT, lambda ev, s: vetoed.add(ev.scope_id))
+    await client.events.on_veto_lifted(TENANT, lambda ev, s: vetoed.discard(ev.scope_id))
 
-        async def handle_task(task: dict, reply: str | None):
-            scope_id = task["scope_id"]
-            if scope_id in vetoed:
-                return  # governance says stop
-            result = await agent.run(task["prompt"], deps=deps)
-            await publish_claim(http, scope_id, result.output, confidence=0.72)
+    async def handle_task(task: dict, reply: str | None):
+        scope_id = task["scope_id"]
+        if scope_id in vetoed:
+            return  # governance says stop
+        result = await agent.run(task["prompt"], deps=deps)
+        await publish_claim(scope_id, result.output, confidence=0.72)
 
-        # The swarm delivers each "propose" task to exactly one worker in the group.
-        await client.events.join_queue(TENANT, "propose", handle_task, group="pydantic-proposers")
+    # The swarm delivers each "propose" task to exactly one worker in the group.
+    await client.events.join_queue(TENANT, "propose", handle_task, group="pydantic-proposers")
 
-        try:
-            await asyncio.Event().wait()
-        finally:
-            await client.close()
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await client.close()
 
 asyncio.run(main())
 ```
 
 Key points:
 
-- **Typed deps everywhere.** The same `SgrsDeps` powers both the retriever tool
-  and the worker, so there is one place that owns the SGRS connection.
+- **Typed deps everywhere.** The same `SgrsDeps` (carrying the SGRS client)
+  powers both the retriever tool and the worker, so there is one place that owns
+  the SGRS connection.
 - **Veto first.** Register the veto handlers before joining the queue, and set
   `on_handler_error` on `NatsConfig` so a veto-handler failure still halts you.
 - **Confidence is data.** Report a calibrated `confidence` on every claim; the
