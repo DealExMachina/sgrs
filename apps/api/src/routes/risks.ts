@@ -22,6 +22,7 @@ const CreateRiskBody = z.object({
   level: RiskLevel,
   category: z.string().max(100).optional(),
   source: z.string().max(200),
+  document_id: z.string().uuid().optional(),
   round: z.number().int().nonnegative().default(0),
 });
 
@@ -38,6 +39,7 @@ function toApi(row: typeof risksTable.$inferSelect) {
     level: row.level,
     category: row.category ?? undefined,
     source: row.source,
+    ...(row.document_id != null && { document_id: row.document_id }),
     round: row.round,
     created_at: row.created_at.toISOString(),
   };

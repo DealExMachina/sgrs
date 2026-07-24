@@ -16,7 +16,7 @@ This repo is the **product** layer: multi-tenant Studio, REST API, and client li
 | `packages/client-ts` | TypeScript client | MIT | [`@sgrs/client-ts` on npm](https://www.npmjs.com/package/@sgrs/client-ts) |
 | `packages/client-py` | Python client | MIT | [`sgrs-client` on PyPI](https://pypi.org/project/sgrs-client/) |
 | `packages/docs` | Generated API + SDK reference (OpenAPI, TypeDoc) | MIT | [GitHub Pages site](https://dealexmachina.github.io/sgrs/) |
-| `examples/` | Seed scenarios + governance presets | MIT | — |
+| `examples/` | Seed scenarios, governance presets + runnable [scenario app](./examples/scenario-app/README.md) | MIT | — |
 
 ## Client libraries
 
@@ -43,6 +43,27 @@ git clone https://github.com/DealExMachina/sgrs.git
 cd sgrs
 pnpm setup    # install deps + create .env.local from .env.example
 pnpm dev      # Turbo: Studio :3001; API uses PORT from .env.local (default 3003)
+```
+
+## Example scenario (end-to-end)
+
+[`examples/scenario-app`](./examples/scenario-app/README.md) is a runnable app that drives the product API through a full governance flow using the `@sgrs/client-ts` SDK:
+
+1. Creates governance **scopes**.
+2. Puts source **documents** into each scope, each with a stable `provenance` reference (content hash / source URI).
+3. Records the governance **outcome** — claims and risks (each linked to its source document via `document_id` for traceability), contradictions, and finality `V(t)` across convergence rounds.
+4. Runs a **BotHITL** review — a bot standing in for the human-in-the-loop reviewer that resolves open contradictions, comments on the epoch summary, and lifts a veto to move an escalated scope forward.
+5. Prints an **outcome report** per scope (documents + provenance, claim/risk traceability audit, HITL decisions, convergence trend, verdict).
+
+```bash
+# In one shell: start the API (file-backed DB so migrations + server share state)
+pnpm --filter '@sgrs/api^...' build
+cd apps/api && DATABASE_URL=/tmp/sgrs-demo \
+  ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= PORT=3003 \
+  pnpm exec tsx src/index.ts
+
+# In another shell: run the scenario
+pnpm --filter @sgrs/example-scenario start
 ```
 
 ## Framework integrations

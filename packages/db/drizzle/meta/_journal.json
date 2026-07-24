@@ -15,6 +15,13 @@
       "when": 1777420800000,
       "tag": "0001_governance_domain",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777507200000,
+      "tag": "0002_governance_provenance",
+      "breakpoints": true
     }
   ]
 }

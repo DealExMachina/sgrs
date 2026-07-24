@@ -1,0 +1,20 @@
+{
+  "name": "@sgrs/example-scenario",
+  "version": "0.1.0",
+  "description": "End-to-end example app: create scopes, put in documents, and report the governance outcome via the SGRS REST API.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx run.ts"
+  },
+  "dependencies": {
+    "@sgrs/client-ts": "workspace:*"
+  },
+  "devDependencies": {
+    "@sgrs/api-schema": "workspace:*",
+    "@types/node": "22.10.2",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3"
+  }
+}

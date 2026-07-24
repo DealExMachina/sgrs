@@ -28,6 +28,21 @@ function publish(eventsApi: EventsApi | undefined, fn: () => void): void {
 /** Score threshold for near-final state transition events. */
 const NEAR_FINAL_THRESHOLD = 0.90;
 
+/** Six decimal places — enough for [0,1] scores without float echo noise. */
+const FINALITY_SCORE_PRECISION = 1e6;
+
+function roundFinalityScore(value: number): number {
+  return Math.round(value * FINALITY_SCORE_PRECISION) / FINALITY_SCORE_PRECISION;
+}
+
+function roundPerDimension(
+  perDimension: Record<string, number>,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(perDimension).map(([k, v]) => [k, roundFinalityScore(v)]),
+  );
+}
+
 // ─── Input schemas ────────────────────────────────────────────────────────────
 
 const UpsertFinalityBody = FinalityStatus.omit({ scope_id: true });
@@ -78,6 +93,7 @@ export function createFinalityRouter(db: Db, analytics: AnalyticsDb, eventsApi?:
     const tenantId = c.get("tenantId");
     const scopeId = c.req.param("scopeId");
     const body = c.req.valid("json");
+    const per_dimension = roundPerDimension(body.per_dimension);
 
     // Read previous score BEFORE the upsert so we can compute a meaningful delta.
     // This is done in the same request; no lock is needed because upsert is idempotent
@@ -99,7 +115,7 @@ export function createFinalityRouter(db: Db, analytics: AnalyticsDb, eventsApi?:
         scope_id: scopeId,
         tenant_id: tenantId,
         score: body.score,
-        per_dimension: body.per_dimension,
+        per_dimension,
         monotonicity_rounds: body.monotonicity_rounds,
         plateau_ema: body.plateau_ema,
         convergence_rate: body.convergence_rate,
@@ -111,7 +127,7 @@ export function createFinalityRouter(db: Db, analytics: AnalyticsDb, eventsApi?:
         target: [finalityTable.scope_id],
         set: {
           score: body.score,
-          per_dimension: body.per_dimension,
+          per_dimension,
           monotonicity_rounds: body.monotonicity_rounds,
           plateau_ema: body.plateau_ema,
           convergence_rate: body.convergence_rate,
@@ -124,6 +140,7 @@ export function createFinalityRouter(db: Db, analytics: AnalyticsDb, eventsApi?:
     const result = {
       scope_id: scopeId,
       ...body,
+      per_dimension,
     } satisfies z.infer<typeof FinalityStatus>;
 
     await analytics
@@ -196,9 +213,7 @@ function toApiFinality(
   return {
     scope_id: scopeId,
     score: row.score,
-    per_dimension: (row.per_dimension ?? {}) as z.infer<
-      typeof FinalityStatus
-    >["per_dimension"],
+    per_dimension: roundPerDimension((row.per_dimension ?? {}) as Record<string, number>),
     monotonicity_rounds: row.monotonicity_rounds,
     plateau_ema: row.plateau_ema,
     convergence_rate: row.convergence_rate,
