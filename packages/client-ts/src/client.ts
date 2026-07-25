@@ -79,6 +79,105 @@ export interface ApiResponse<T> {
 }
 
 /**
+ * Request body for `POST /api/claims`.
+ * Mirrors the `CreateClaimBody` zod schema in apps/api.
+ */
+export interface CreateClaimBody {
+  scope_id: string;
+  text: string;
+  source: string;
+  /** Provenance link to the originating document (documents.id). */
+  document_id?: string;
+  dimension?: schema.FinalityDimension;
+  confidence: number;
+  /** Convergence round (defaults to 0 server-side). */
+  round?: number;
+}
+
+/**
+ * Request body for `POST /api/drifts`.
+ * Mirrors the `CreateDriftBody` zod schema in apps/api.
+ */
+export interface CreateDriftBody {
+  scope_id: string;
+  claim_id?: string;
+  subject: string;
+  previous_confidence: number;
+  current_confidence: number;
+  /** Signed confidence delta. Negative means degradation. */
+  delta: number;
+  severity: schema.DriftSeverity;
+  round?: number;
+}
+
+/**
+ * Request body for `POST /api/contradictions`.
+ * Mirrors the `CreateContradictionBody` zod schema in apps/api.
+ */
+export interface CreateContradictionBody {
+  scope_id: string;
+  claim_a: string;
+  claim_b: string;
+  source_a: string;
+  source_b: string;
+  severity: schema.ContradictionSeverity;
+  round?: number;
+}
+
+/**
+ * Request body for `POST /api/risks`.
+ * Mirrors the `CreateRiskBody` zod schema in apps/api.
+ */
+export interface CreateRiskBody {
+  scope_id: string;
+  description: string;
+  level: schema.RiskLevel;
+  category?: string;
+  source: string;
+  document_id?: string;
+  round?: number;
+}
+
+/**
+ * Request body for `POST /api/documents`.
+ * Mirrors the `CreateDocumentBody` zod schema in apps/api.
+ */
+export interface CreateDocumentBody {
+  scope_id: string;
+  name: string;
+  type: string;
+  status?: schema.DocumentStatus;
+  /** Stable provenance reference (content hash, source URI, external id). */
+  provenance?: string;
+}
+
+/**
+ * Request body for `PATCH /api/documents/:id`.
+ * Mirrors the `PatchDocumentBody` zod schema in apps/api.
+ */
+export interface PatchDocumentBody {
+  status?: schema.DocumentStatus;
+  claim_count?: number;
+  provenance?: string;
+}
+
+/**
+ * Request body for `POST /api/epochs`.
+ * Mirrors the `CreateEpochBody` zod schema in apps/api.
+ */
+export interface CreateEpochBody {
+  scope_id: string;
+  round: number;
+  summary_text: string;
+  claim_count?: number;
+  drift_count?: number;
+  contradiction_count?: number;
+  risk_count?: number;
+  score: number;
+  state: schema.ScopeState;
+}
+
+/**
  * SGRS REST API client for TypeScript.
  *
  * All request and response types are validated against the Zod schemas
@@ -408,52 +507,136 @@ export class Client {
   };
 
   /**
-   * Claims API — read-only access to extracted factual assertions.
+   * Claims API — extracted factual assertions.
    */
   claims = {
     /** List claims extracted for a scope (newest-first). */
     list: async (scopeId: string): Promise<ApiResponse<schema.Claim[]>> => {
       return this.request("GET", `/api/claims/${encodeURIComponent(scopeId)}`);
     },
+
+    /** Create a claim (kernel → API after extracting from a document). */
+    create: async (body: CreateClaimBody): Promise<ApiResponse<schema.Claim>> => {
+      return this.request("POST", "/api/claims", body);
+    },
+
+    /**
+     * Group a scope's claims by source document.
+     * Returns an object mapping each `source` to its list of claims.
+     */
+    byDoc: async (
+      scopeId: string,
+    ): Promise<ApiResponse<Record<string, schema.Claim[]>>> => {
+      return this.request("GET", `/api/claims/${encodeURIComponent(scopeId)}/by-doc`);
+    },
   };
 
   /**
-   * Contradictions API — read-only access to conflicting claim pairs.
+   * Drifts API — confidence changes detected between rounds.
+   */
+  drifts = {
+    /** List drifts detected for a scope (highest severity first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.Drift[]>> => {
+      return this.request("GET", `/api/drifts/${encodeURIComponent(scopeId)}`);
+    },
+
+    /** Create a drift (comparator agent). */
+    create: async (body: CreateDriftBody): Promise<ApiResponse<schema.Drift>> => {
+      return this.request("POST", "/api/drifts", body);
+    },
+  };
+
+  /**
+   * Contradictions API — conflicting claim pairs.
    */
   contradictions = {
     /** List contradictions detected for a scope (open/critical first). */
     list: async (scopeId: string): Promise<ApiResponse<schema.Contradiction[]>> => {
       return this.request("GET", `/api/contradictions/${encodeURIComponent(scopeId)}`);
     },
+
+    /** Create a contradiction (comparator agent). */
+    create: async (
+      body: CreateContradictionBody,
+    ): Promise<ApiResponse<schema.Contradiction>> => {
+      return this.request("POST", "/api/contradictions", body);
+    },
+
+    /** Resolve or defer a contradiction (HITL). */
+    resolve: async (
+      id: string,
+      body: schema.ResolveContradictionBody,
+    ): Promise<ApiResponse<schema.Contradiction>> => {
+      return this.request("PATCH", `/api/contradictions/${encodeURIComponent(id)}`, body);
+    },
   };
 
   /**
-   * Risks API — read-only access to identified risk items.
+   * Risks API — identified risk items.
    */
   risks = {
     /** List risks identified for a scope (critical first). */
     list: async (scopeId: string): Promise<ApiResponse<schema.Risk[]>> => {
       return this.request("GET", `/api/risks/${encodeURIComponent(scopeId)}`);
     },
+
+    /** Create a risk (risk-assessment agent). */
+    create: async (body: CreateRiskBody): Promise<ApiResponse<schema.Risk>> => {
+      return this.request("POST", "/api/risks", body);
+    },
   };
 
   /**
-   * Documents API — read-only access to ingested source material.
+   * Documents API — ingested source material.
    */
   documents = {
     /** List documents ingested into a scope (newest-first). */
     list: async (scopeId: string): Promise<ApiResponse<schema.SgrsDocument[]>> => {
       return this.request("GET", `/api/documents/${encodeURIComponent(scopeId)}`);
     },
+
+    /** Register a document (kernel after indexing). */
+    create: async (body: CreateDocumentBody): Promise<ApiResponse<schema.SgrsDocument>> => {
+      return this.request("POST", "/api/documents", body);
+    },
+
+    /** Update a document's status and/or claim_count. */
+    patch: async (
+      id: string,
+      body: PatchDocumentBody,
+    ): Promise<ApiResponse<schema.SgrsDocument>> => {
+      return this.request("PATCH", `/api/documents/${encodeURIComponent(id)}`, body);
+    },
   };
 
   /**
-   * Epochs API — read-only access to per-round narrative summaries.
+   * Epochs API — per-round narrative summaries.
    */
   epochs = {
+    /** List epoch summaries for a scope (newest-first). */
+    list: async (scopeId: string): Promise<ApiResponse<schema.EpochSummary[]>> => {
+      return this.request("GET", `/api/epochs/${encodeURIComponent(scopeId)}`);
+    },
+
     /** Get the latest epoch summary for a scope. */
     latest: async (scopeId: string): Promise<ApiResponse<schema.EpochSummary>> => {
       return this.request("GET", `/api/epochs/${encodeURIComponent(scopeId)}/latest`);
+    },
+
+    /** Create an epoch summary (kernel at round completion). */
+    create: async (body: CreateEpochBody): Promise<ApiResponse<schema.EpochSummary>> => {
+      return this.request("POST", "/api/epochs", body);
+    },
+
+    /**
+     * Add a HITL comment to an epoch summary.
+     * Returns the updated epoch summary (with the new comment appended).
+     */
+    addComment: async (
+      id: string,
+      body: schema.AddEpochCommentBody,
+    ): Promise<ApiResponse<schema.EpochSummary>> => {
+      return this.request("POST", `/api/epochs/${encodeURIComponent(id)}/comments`, body);
     },
   };
 }

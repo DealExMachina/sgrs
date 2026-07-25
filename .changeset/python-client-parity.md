@@ -28,11 +28,25 @@ omitted the required `X-Tenant-ID` header, and left `list_scopes` unimplemented.
   `ingest_document`, and the governance read helpers `list_claims`,
   `list_contradictions`, `list_risks`, `list_documents`, `get_latest_epoch`.
 
+### Governance write helpers
+
+- New create/patch methods (each with a `*_sync` variant) closing the remaining
+  API-coverage gap: `create_claim`, `list_claims_by_doc` (returns a
+  `dict[str, list[Claim]]` grouped by source document), `list_drifts`,
+  `create_drift`, `create_contradiction`, `resolve_contradiction`,
+  `create_risk`, `create_document`, `patch_document`, `list_epochs`,
+  `create_epoch`, and `add_epoch_comment`.
+
 ### Schema models
 
 - Added `TenantId`, `IngestDocumentRequest`, `IngestDocumentResponse`, `Claim`,
   `Contradiction`, `Risk`, `SgrsDocument`, `EpochSummary`, `EpochSummaryComment`
   and supporting literals; exported from the package root.
+- Added the `Drift` read model (+ `DriftSeverity`), the
+  `ResolveContradictionBody` and `AddEpochCommentBody` bodies, and the
+  `CreateClaimBody`, `CreateDriftBody`, `CreateContradictionBody`,
+  `CreateRiskBody`, `CreateDocumentBody`, `PatchDocumentBody` and
+  `CreateEpochBody` request models; all exported from the package root.
 - Aligned the `ScopeId` regex to the source of truth
   (`^(?:[a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])$`).
 

@@ -22,15 +22,19 @@ export {
   FinalityCertificate,
   // Governance domain (read models)
   Claim,
+  Drift,
+  DriftSeverity,
   Contradiction,
   ContradictionSeverity,
   ContradictionStatus,
+  ResolveContradictionBody,
   Risk,
   RiskLevel,
   SgrsDocument,
   DocumentStatus,
   EpochSummary,
   EpochSummaryComment,
+  AddEpochCommentBody,
   // Version
   API_VERSION,
   // Ingest

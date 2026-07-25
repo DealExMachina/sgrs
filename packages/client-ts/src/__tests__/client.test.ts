@@ -553,6 +553,428 @@ describe("Client", () => {
     });
   });
 
+  describe("governance write helpers", () => {
+    it("claims.create should POST /api/claims with the body", async () => {
+      const claim = {
+        id: "11111111-1111-1111-1111-111111111111",
+        scope_id: "deal-horizon",
+        text: "ARR grew 20%",
+        source: "memo.pdf",
+        dimension: "claim_confidence",
+        confidence: 0.9,
+        round: 0,
+        created_at: new Date().toISOString(),
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => claim,
+      });
+
+      const result = await client.claims.create({
+        scope_id: "deal-horizon",
+        text: "ARR grew 20%",
+        source: "memo.pdf",
+        confidence: 0.9,
+        dimension: "claim_confidence",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(201);
+      expect(result.data?.text).toBe("ARR grew 20%");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/claims",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            scope_id: "deal-horizon",
+            text: "ARR grew 20%",
+            source: "memo.pdf",
+            confidence: 0.9,
+            dimension: "claim_confidence",
+          }),
+        }),
+      );
+    });
+
+    it("claims.byDoc should GET /api/claims/:scopeId/by-doc and parse a record", async () => {
+      const grouped = {
+        "memo.pdf": [
+          {
+            id: "11111111-1111-1111-1111-111111111111",
+            scope_id: "deal-horizon",
+            text: "ARR grew",
+            source: "memo.pdf",
+            confidence: 0.9,
+            round: 0,
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => grouped,
+      });
+
+      const result = await client.claims.byDoc("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(Array.isArray(result.data)).toBe(false);
+      expect(result.data?.["memo.pdf"]?.[0]?.source).toBe("memo.pdf");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/claims/deal-horizon/by-doc",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("drifts.list should GET /api/drifts/:scopeId", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      const result = await client.drifts.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/drifts/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("drifts.create should POST /api/drifts with the body", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "66666666-6666-6666-6666-666666666666",
+          scope_id: "deal-horizon",
+          subject: "claim.ARR",
+          previous_confidence: 0.9,
+          current_confidence: 0.6,
+          delta: -0.3,
+          severity: "high",
+          round: 1,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.drifts.create({
+        scope_id: "deal-horizon",
+        subject: "claim.ARR",
+        previous_confidence: 0.9,
+        current_confidence: 0.6,
+        delta: -0.3,
+        severity: "high",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.severity).toBe("high");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/drifts",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"subject":"claim.ARR"'),
+        }),
+      );
+    });
+
+    it("contradictions.create should POST /api/contradictions", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "22222222-2222-2222-2222-222222222222",
+          scope_id: "deal-horizon",
+          claim_a: "ARR grew",
+          claim_b: "ARR shrank",
+          source_a: "a.pdf",
+          source_b: "b.pdf",
+          severity: "critical",
+          status: "open",
+          round: 1,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.contradictions.create({
+        scope_id: "deal-horizon",
+        claim_a: "ARR grew",
+        claim_b: "ARR shrank",
+        source_a: "a.pdf",
+        source_b: "b.pdf",
+        severity: "critical",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.status).toBe("open");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/contradictions",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("contradictions.resolve should PATCH /api/contradictions/:id", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "22222222-2222-2222-2222-222222222222",
+          scope_id: "deal-horizon",
+          claim_a: "ARR grew",
+          claim_b: "ARR shrank",
+          source_a: "a.pdf",
+          source_b: "b.pdf",
+          severity: "critical",
+          status: "resolved",
+          resolution: "Reconciled figures",
+          resolved_by: "analyst@acme",
+          round: 1,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.contradictions.resolve(
+        "22222222-2222-2222-2222-222222222222",
+        { status: "resolved", resolution: "Reconciled figures", resolved_by: "analyst@acme" },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.status).toBe("resolved");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/contradictions/22222222-2222-2222-2222-222222222222",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining('"resolved_by":"analyst@acme"'),
+        }),
+      );
+    });
+
+    it("risks.create should POST /api/risks", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "33333333-3333-3333-3333-333333333333",
+          scope_id: "deal-horizon",
+          description: "Renewal risk",
+          level: "high",
+          source: "memo.pdf",
+          round: 1,
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.risks.create({
+        scope_id: "deal-horizon",
+        description: "Renewal risk",
+        level: "high",
+        source: "memo.pdf",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.level).toBe("high");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/risks",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("documents.create should POST /api/documents", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "44444444-4444-4444-4444-444444444444",
+          scope_id: "deal-horizon",
+          name: "memo.pdf",
+          type: "pdf",
+          status: "pending",
+          claim_count: 0,
+          ingested_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.documents.create({
+        scope_id: "deal-horizon",
+        name: "memo.pdf",
+        type: "pdf",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.name).toBe("memo.pdf");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/documents",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("documents.patch should PATCH /api/documents/:id", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "44444444-4444-4444-4444-444444444444",
+          scope_id: "deal-horizon",
+          name: "memo.pdf",
+          type: "pdf",
+          status: "indexed",
+          claim_count: 3,
+          ingested_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.documents.patch(
+        "44444444-4444-4444-4444-444444444444",
+        { status: "indexed", claim_count: 3 },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.status).toBe("indexed");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/documents/44444444-4444-4444-4444-444444444444",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining('"claim_count":3'),
+        }),
+      );
+    });
+
+    it("epochs.list should GET /api/epochs/:scopeId", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => [],
+      });
+
+      const result = await client.epochs.list("deal-horizon");
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/epochs/deal-horizon",
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("epochs.create should POST /api/epochs", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "55555555-5555-5555-5555-555555555555",
+          scope_id: "deal-horizon",
+          round: 2,
+          summary_text: "Converging",
+          claim_count: 3,
+          drift_count: 0,
+          contradiction_count: 1,
+          risk_count: 1,
+          score: 0.8,
+          state: "near-final",
+          comments: [],
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.epochs.create({
+        scope_id: "deal-horizon",
+        round: 2,
+        summary_text: "Converging",
+        score: 0.8,
+        state: "near-final",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.round).toBe(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/epochs",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+
+    it("epochs.addComment should POST /api/epochs/:id/comments and return the updated summary", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "55555555-5555-5555-5555-555555555555",
+          scope_id: "deal-horizon",
+          round: 2,
+          summary_text: "Converging",
+          claim_count: 3,
+          drift_count: 0,
+          contradiction_count: 1,
+          risk_count: 1,
+          score: 0.8,
+          state: "near-final",
+          comments: [
+            {
+              id: "77777777-7777-7777-7777-777777777777",
+              author: "analyst@acme",
+              text: "Looks good",
+              created_at: new Date().toISOString(),
+            },
+          ],
+          created_at: new Date().toISOString(),
+        }),
+      });
+
+      const result = await client.epochs.addComment(
+        "55555555-5555-5555-5555-555555555555",
+        { author: "analyst@acme", text: "Looks good" },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.data?.comments?.[0]?.text).toBe("Looks good");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:3003/api/epochs/55555555-5555-5555-5555-555555555555/comments",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"author":"analyst@acme"'),
+        }),
+      );
+    });
+
+    it("should include X-Tenant-ID header on write helpers when configured", async () => {
+      const tenantClient = new Client({
+        baseUrl: "http://localhost:3003",
+        tenantId: "acme",
+        fetch: mockFetch as typeof fetch,
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({}),
+      });
+
+      await tenantClient.risks.create({
+        scope_id: "deal-horizon",
+        description: "Renewal risk",
+        level: "high",
+        source: "memo.pdf",
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          headers: expect.objectContaining({ "X-Tenant-ID": "acme" }),
+        }),
+      );
+    });
+  });
+
   describe("request headers", () => {
     it("should include Authorization header when apiKey is set", async () => {
       const clientWithKey = new Client({

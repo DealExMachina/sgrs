@@ -38,10 +38,22 @@ PRODUCT_ROUTES = {
     ("GET", "/api/agents"),
     ("GET", "/api/agents/{param}"),
     ("GET", "/api/claims/{param}"),
+    ("POST", "/api/claims"),
+    ("GET", "/api/claims/{param}/by-doc"),
+    ("GET", "/api/drifts/{param}"),
+    ("POST", "/api/drifts"),
     ("GET", "/api/contradictions/{param}"),
+    ("POST", "/api/contradictions"),
+    ("PATCH", "/api/contradictions/{param}"),
     ("GET", "/api/risks/{param}"),
+    ("POST", "/api/risks"),
     ("GET", "/api/documents/{param}"),
+    ("POST", "/api/documents"),
+    ("PATCH", "/api/documents/{param}"),
+    ("GET", "/api/epochs/{param}"),
     ("GET", "/api/epochs/{param}/latest"),
+    ("POST", "/api/epochs"),
+    ("POST", "/api/epochs/{param}/comments"),
     ("POST", "/api/ingest"),
 }
 
@@ -57,8 +69,9 @@ ALLOWED_ROUTES = PRODUCT_ROUTES | PARITY_ONLY_ROUTES
 _SCOPE = "sentinelscope"
 _HANDLE = "mh_000000000000000000000000"
 _AGENT = "ag-sentinel"
+_ID = "sentinelid"
 _ROUND = 7
-_SENTINELS = {_SCOPE, _HANDLE, _AGENT, str(_ROUND)}
+_SENTINELS = {_SCOPE, _HANDLE, _AGENT, _ID, str(_ROUND)}
 
 _CERT = FinalityCertificate.model_validate(
     {
@@ -103,10 +116,22 @@ INVOCATIONS = [
     ("check_health", ()),
     ("ingest_document", (IngestDocumentRequest(scope_id=_SCOPE, name="n", text="t"),)),
     ("list_claims", (_SCOPE,)),
+    ("create_claim", (_SCOPE, "text", "src", 0.9)),
+    ("list_claims_by_doc", (_SCOPE,)),
+    ("list_drifts", (_SCOPE,)),
+    ("create_drift", (_SCOPE, "subject", 0.9, 0.6, -0.3, "high")),
     ("list_contradictions", (_SCOPE,)),
+    ("create_contradiction", (_SCOPE, "a", "b", "sa", "sb", "critical")),
+    ("resolve_contradiction", (_ID, "resolved", "analyst")),
     ("list_risks", (_SCOPE,)),
+    ("create_risk", (_SCOPE, "desc", "high", "src")),
     ("list_documents", (_SCOPE,)),
+    ("create_document", (_SCOPE, "name", "pdf")),
+    ("patch_document", (_ID,)),
     ("get_latest_epoch", (_SCOPE,)),
+    ("list_epochs", (_SCOPE,)),
+    ("create_epoch", (_SCOPE, 1, "summary", 0.8, "active")),
+    ("add_epoch_comment", (_ID, "author", "text")),
 ]
 
 
