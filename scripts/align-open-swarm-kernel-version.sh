@@ -6,7 +6,7 @@ set -euo pipefail
 OPEN_SWARM_DIR="${1:-${OPEN_SWARM_REPO:-}}"
 if [[ -z "${OPEN_SWARM_DIR}" ]]; then
   ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  OPEN_SWARM_DIR="${ROOT}/open-governed-swarm-of-agents"
+  OPEN_SWARM_DIR="${ROOT}/../open-governed-swarm-of-agents"
 fi
 
 TS_PKG="${OPEN_SWARM_DIR}/packages/sgrs-client/package.json"

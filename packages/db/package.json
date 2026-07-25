@@ -1,6 +1,6 @@
 {
   "name": "@sgrs/db",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SGRS persistence layer — Drizzle ORM (PGlite / PostgreSQL) + DuckDB analytics",
   "license": "MIT",
   "type": "module",

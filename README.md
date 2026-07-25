@@ -83,6 +83,8 @@ Start with the [integrations overview](./docs/integrations/README.md) for shared
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute (setup, PR flow, checks)
 - [docs/integrations/](./docs/integrations/README.md) — integrate SGRS with LangGraph, Pydantic AI, Mastra, and Agentica
+- [CHANGELOG.md](./CHANGELOG.md) — release history
+- [VERSIONING.md](./VERSIONING.md) — semver policy (kernel + product)
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — Studio hooks, patterns, API route list
 - [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md) — ports, env vars, proxy and SSE flows
 - [PERFORMANCE_GUIDANCE.md](./PERFORMANCE_GUIDANCE.md) — client timeouts, concurrency, and performance checks

@@ -1,6 +1,6 @@
 {
   "name": "@sgrs/example-scenario",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "End-to-end example app: create scopes, put in documents, and report the governance outcome via the SGRS REST API.",
   "license": "MIT",
   "private": true,
