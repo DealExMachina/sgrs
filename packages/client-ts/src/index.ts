@@ -36,7 +36,20 @@
  */
 
 export { Client, createClient } from "./client.js";
-export type { ClientConfig, ApiError, ApiResponse, NatsConfig, TLSConfig } from "./client.js";
+export type {
+  ClientConfig,
+  ApiError,
+  ApiResponse,
+  NatsConfig,
+  TLSConfig,
+  CreateClaimBody,
+  CreateDriftBody,
+  CreateContradictionBody,
+  CreateRiskBody,
+  CreateDocumentBody,
+  PatchDocumentBody,
+  CreateEpochBody,
+} from "./client.js";
 
 // Real-time event types and utilities
 export { EventsApi, NatsNotConfiguredError, NatsNotConnectedError } from "./events/api.js";
