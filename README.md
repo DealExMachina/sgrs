@@ -66,9 +66,23 @@ cd apps/api && DATABASE_URL=/tmp/sgrs-demo \
 pnpm --filter @sgrs/example-scenario start
 ```
 
+## Framework integrations
+
+Plug SGRS into an existing agent framework. Each guide has a short tutorial for using SGRS **as a governed retriever** (vetted claims as grounding context) and **as a participant in the swarm** (an external worker that contributes claims and honors the governance veto):
+
+| Framework | Language | Guide |
+|---|---|---|
+| LangGraph | Python | [docs/integrations/langgraph.md](./docs/integrations/langgraph.md) |
+| Pydantic AI | Python | [docs/integrations/pydantic-ai.md](./docs/integrations/pydantic-ai.md) |
+| Mastra | TypeScript | [docs/integrations/mastra.md](./docs/integrations/mastra.md) |
+| Agentica | TypeScript | [docs/integrations/agentica.md](./docs/integrations/agentica.md) |
+
+Start with the [integrations overview](./docs/integrations/README.md) for shared concepts, the endpoint reference, and governance rules every integration should follow.
+
 ## Documentation
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute (setup, PR flow, checks)
+- [docs/integrations/](./docs/integrations/README.md) — integrate SGRS with LangGraph, Pydantic AI, Mastra, and Agentica
 - [CHANGELOG.md](./CHANGELOG.md) — release history
 - [VERSIONING.md](./VERSIONING.md) — semver policy (kernel + product)
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — Studio hooks, patterns, API route list
