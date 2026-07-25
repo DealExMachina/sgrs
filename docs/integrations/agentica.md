@@ -36,8 +36,8 @@ export const sgrs = createClient({
   ...(process.env.SGRS_NATS && { nats: { servers: process.env.SGRS_NATS } }),
 });
 
-// Only claim *creation* (POST /api/claims) is not wrapped by the SDK; the
-// swarm-participant section uses these headers for that one call.
+// Headers for the raw OpenAPI HTTP controller (see the ingest section below),
+// which talks to the API directly rather than through the typed client.
 export function sgrsHeaders(): Record<string, string> {
   const h: Record<string, string> = { "X-Tenant-ID": TENANT };
   if (API_KEY) h.Authorization = `Bearer ${API_KEY}`;
@@ -181,23 +181,9 @@ transport (and therefore `sgrs.events`) is active.
 ```ts
 // src/swarm/worker.ts
 import { agent } from "../agent";
-import { sgrs, TENANT, BASE_URL, sgrsHeaders } from "../sgrs/config";
+import { sgrs, TENANT } from "../sgrs/config";
 
 const vetoed = new Set<string>();
-
-async function publishClaim(scopeId: string, text: string, confidence: number) {
-  await fetch(`${BASE_URL}/api/claims`, {
-    method: "POST",
-    headers: { ...sgrsHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      scope_id: scopeId,
-      text,
-      source: "agentica-proposer", // this agent's identity
-      confidence,
-      dimension: "claim_confidence",
-    }),
-  });
-}
 
 async function main() {
   await sgrs.connect();
@@ -221,7 +207,14 @@ async function main() {
         .filter((r) => r.type === "assistantMessage")
         .map((r) => r.text)
         .join("\n");
-      await publishClaim(task.scope_id, text, 0.72);
+      // Contribute the finding back into the scope via the SDK.
+      await sgrs.claims.create({
+        scope_id: task.scope_id,
+        text,
+        source: "agentica-proposer", // this agent's identity
+        confidence: 0.72,
+        dimension: "claim_confidence",
+      });
     },
     "agentica-proposers",
   );

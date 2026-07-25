@@ -14,10 +14,8 @@ npm install nats
 ```
 
 Create one shared SGRS client. `@sgrs/client-ts` covers scopes, models,
-finality, agents, ingest, the governance read helpers (claims, contradictions,
-risks, documents, epochs), and NATS events. The only route it does not wrap is
-claim *creation* (`POST /api/claims`), so the swarm-participant section below
-keeps a thin `fetch` + `sgrsHeaders()` for that one call.
+finality, agents, ingest, the governance read and write helpers (claims,
+drifts, contradictions, risks, documents, epochs), and NATS events.
 
 ```ts
 // src/sgrs/client.ts
@@ -35,12 +33,6 @@ export const sgrs = createClient({
     nats: { servers: process.env.SGRS_NATS },
   }),
 });
-
-export function sgrsHeaders(): Record<string, string> {
-  const h: Record<string, string> = { "X-Tenant-ID": TENANT };
-  if (API_KEY) h.Authorization = `Bearer ${API_KEY}`;
-  return h;
-}
 ```
 
 ---
@@ -154,23 +146,9 @@ from a NATS queue group, publishes reviewed output as claims, and halts on veto.
 ```ts
 // src/swarm/worker.ts
 import { analystAgent } from "../mastra/agents/analyst";
-import { sgrs, TENANT, BASE_URL, sgrsHeaders } from "../sgrs/client";
+import { sgrs, TENANT } from "../sgrs/client";
 
 const vetoed = new Set<string>();
-
-async function publishClaim(scopeId: string, text: string, confidence: number) {
-  await fetch(`${BASE_URL}/api/claims`, {
-    method: "POST",
-    headers: { ...sgrsHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      scope_id: scopeId,
-      text,
-      source: "mastra-reviewer", // this agent's identity
-      confidence,
-      dimension: "claim_confidence",
-    }),
-  });
-}
 
 async function main() {
   await sgrs.connect();
@@ -190,7 +168,14 @@ async function main() {
     async (task) => {
       if (vetoed.has(task.scope_id)) return; // governance says stop
       const res = await analystAgent.generate(task.prompt);
-      await publishClaim(task.scope_id, res.text, 0.72);
+      // Contribute the reviewed output back into the scope via the SDK.
+      await sgrs.claims.create({
+        scope_id: task.scope_id,
+        text: res.text,
+        source: "mastra-reviewer", // this agent's identity
+        confidence: 0.72,
+        dimension: "claim_confidence",
+      });
     },
     "mastra-reviewers",
   );

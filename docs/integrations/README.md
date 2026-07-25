@@ -42,10 +42,10 @@ pip install sgrs-client         # Python (LangGraph, Pydantic AI)
 ```
 
 > Both clients cover the same surface: scopes, models, finality, agents,
-> health, ingest, the governance read helpers (claims, contradictions, risks,
-> documents, epochs), and NATS events. The one route neither SDK wraps yet is
-> claim *creation* (`POST /api/claims`), so the swarm-participant examples make a
-> thin HTTP call for that single step.
+> health, ingest, the governance read and write helpers (claims, drifts,
+> contradictions, risks, documents, epochs), and NATS events. The
+> swarm-participant examples contribute claims through the SDK
+> (`sgrs.claims.create(...)` / `client.create_claim(...)`) — no raw HTTP needed.
 
 ---
 

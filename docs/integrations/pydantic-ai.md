@@ -132,13 +132,11 @@ The Pydantic AI agent joins the swarm as an **external** worker. It processes
 tasks from a NATS queue group, publishes its reviewed output as claims, and
 halts on veto.
 
-Build the client with a `nats` config so `client.events` is active. Claim
-creation (`POST /api/claims`) is the one route not yet wrapped by the SDK, so
-contribute claims with a thin HTTP call that reuses the client's config.
+Build the client with a `nats` config so `client.events` is active. Contribute
+the agent's reviewed output back into the scope with `client.create_claim`.
 
 ```python
 import asyncio
-import httpx
 from sgrs_client import create_client, NatsConfig
 
 TENANT = os.environ.get("SGRS_TENANT", "acme")
@@ -150,19 +148,6 @@ client = create_client(
     api_key=os.environ.get("SGRS_API_KEY"),
     nats=NatsConfig(servers=os.environ.get("SGRS_NATS", "nats://localhost:4222")),
 )
-
-async def publish_claim(scope_id: str, text: str, confidence: float):
-    headers = {"X-Tenant-ID": TENANT}
-    if client.api_key:
-        headers["Authorization"] = f"Bearer {client.api_key}"
-    async with httpx.AsyncClient(base_url=client.base_url, headers=headers) as http:
-        await http.post("/api/claims", json={
-            "scope_id": scope_id,
-            "text": text,
-            "source": "pydantic-ai-proposer",   # this agent's identity
-            "confidence": confidence,
-            "dimension": "claim_confidence",
-        })
 
 async def main():
     deps = SgrsDeps(client=client, tenant=TENANT)
@@ -177,7 +162,13 @@ async def main():
         if scope_id in vetoed:
             return  # governance says stop
         result = await agent.run(task["prompt"], deps=deps)
-        await publish_claim(scope_id, result.output, confidence=0.72)
+        await client.create_claim(
+            scope_id=scope_id,
+            text=result.output,
+            source="pydantic-ai-proposer",   # this agent's identity
+            confidence=0.72,
+            dimension="claim_confidence",
+        )
 
     # The swarm delivers each "propose" task to exactly one worker in the group.
     await client.events.join_queue(TENANT, "propose", handle_task, group="pydantic-proposers")

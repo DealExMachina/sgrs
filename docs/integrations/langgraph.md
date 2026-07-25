@@ -137,7 +137,6 @@ Enable real-time events by giving the client a `nats` config (reuse the same
 
 ```python
 import asyncio
-import httpx
 from sgrs_client import create_client, NatsConfig
 
 TENANT = SGRS_TENANT
@@ -150,21 +149,6 @@ client = create_client(
     nats=NatsConfig(servers=os.environ.get("SGRS_NATS", "nats://localhost:4222")),
 )
 
-# Claim creation (POST /api/claims) is the one route not yet wrapped by the SDK,
-# so contribute claims with a thin HTTP call that reuses the client's config.
-async def publish_claim(scope_id: str, text: str, confidence: float) -> None:
-    headers = {"X-Tenant-ID": TENANT}
-    if client.api_key:
-        headers["Authorization"] = f"Bearer {client.api_key}"
-    async with httpx.AsyncClient(base_url=client.base_url, headers=headers) as http:
-        await http.post("/api/claims", json={
-            "scope_id": scope_id,
-            "text": text,
-            "source": "langgraph-reviewer",   # this agent's identity
-            "confidence": confidence,
-            "dimension": "claim_confidence",
-        })
-
 async def handle_task(task: dict, reply: str | None) -> None:
     scope_id = task["scope_id"]
     if scope_id in vetoed_scopes:
@@ -173,7 +157,15 @@ async def handle_task(task: dict, reply: str | None) -> None:
     # Run your LangGraph agent to produce a reviewed finding.
     result = await agent.ainvoke({"messages": [("user", task["prompt"])]})
     finding = result["messages"][-1].content
-    await publish_claim(scope_id, finding, confidence=0.72)
+
+    # Contribute the finding back into the scope via the SDK.
+    await client.create_claim(
+        scope_id=scope_id,
+        text=finding,
+        source="langgraph-reviewer",   # this agent's identity
+        confidence=0.72,
+        dimension="claim_confidence",
+    )
 
 async def main():
     await client.connect()
