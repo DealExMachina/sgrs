@@ -1,6 +1,6 @@
 {
   "name": "@sgrs/client-ts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript client for the SGRS governance platform — HTTP + optional NATS real-time events",
   "keywords": ["sgrs", "governance", "finality", "nats", "events", "real-time"],
   "license": "MIT",

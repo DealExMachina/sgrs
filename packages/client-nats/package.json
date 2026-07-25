@@ -1,6 +1,6 @@
 {
   "name": "@sgrs/client-nats",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Compatibility wrapper for SGRS NATS events; canonical implementation is @sgrs/client-ts/events",
   "keywords": ["sgrs", "nats", "governance", "finality", "events", "real-time"],
   "license": "MIT",

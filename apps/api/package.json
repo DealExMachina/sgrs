@@ -1,6 +1,6 @@
 {
   "name": "@sgrs/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SGRS REST API server — Hono + Drizzle + DuckDB",
   "license": "MIT",
   "private": true,

@@ -69,6 +69,8 @@ pnpm --filter @sgrs/example-scenario start
 ## Documentation
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to contribute (setup, PR flow, checks)
+- [CHANGELOG.md](./CHANGELOG.md) — release history
+- [VERSIONING.md](./VERSIONING.md) — semver policy (kernel + product)
 - [DEVELOPMENT.md](./DEVELOPMENT.md) — Studio hooks, patterns, API route list
 - [ROUTING_ARCHITECTURE.md](./ROUTING_ARCHITECTURE.md) — ports, env vars, proxy and SSE flows
 - [PERFORMANCE_GUIDANCE.md](./PERFORMANCE_GUIDANCE.md) — client timeouts, concurrency, and performance checks

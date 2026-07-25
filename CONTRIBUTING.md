@@ -93,7 +93,9 @@ For coverage locally: `pnpm test:coverage`.
 
 If you change **control-plane routes** (`/v1/*`) exposed via the admin proxy, keep them aligned with [open-governed-swarm-of-agents](https://github.com/DealExMachina/open-governed-swarm-of-agents) (`@sgrs/kernel-client`, `sgrs-kernel-client`). The smoke tests in `apps/api/src/__tests__/client-sync*.smoke.test.ts` enforce this.
 
-When the open repo bumps its kernel client semver (`packages/sgrs-client/package.json` and `packages/sgrs-client-py/pyproject.toml` — they must stay aligned per [release-versioning.md](https://github.com/DealExMachina/open-governed-swarm-of-agents/blob/main/docs/release-versioning.md)), update [`integration/open-swarm-compat.json`](./integration/open-swarm-compat.json). CI compares the open checkout against that manifest via `client-sync-version.smoke.test.ts` (after `scripts/align-open-swarm-kernel-version.sh` syncs TS to the Python version when they drift). Commit the same alignment in the open repo when you bump kernel clients.
+When the open repo bumps its kernel client semver (`packages/sgrs-client/package.json` and `packages/sgrs-client-py/pyproject.toml` — they must stay aligned), update [`integration/open-swarm-compat.json`](./integration/open-swarm-compat.json). CI compares the open checkout against that manifest via `client-sync-version.smoke.test.ts` (after `scripts/align-open-swarm-kernel-version.sh` syncs TS to the Python version when they drift). Commit the same alignment in the open repo when you bump kernel clients.
+
+Cross-repo semver and changelog policy: [VERSIONING.md](./VERSIONING.md) and [kernel release-versioning.md](https://github.com/DealExMachina/swarm-of-governed-agents/blob/main/docs/release-versioning.md).
 
 ## Published packages and changesets
 
@@ -103,7 +105,7 @@ npm and PyPI releases use [Changesets](https://github.com/changesets/changesets)
 pnpm changeset
 ```
 
-Follow the prompts (patch/minor/major + summary). Maintainers run versioning and release workflows on merge to `main`.
+Maintainers run versioning and release workflows on merge to `main`. See [VERSIONING.md](./VERSIONING.md).
 
 ## Code style
 
