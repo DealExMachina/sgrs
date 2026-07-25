@@ -1,0 +1,8 @@
+# OSV Scanner configuration.
+#
+# Suppressions must be dev-only, unpatchable transitives. Document the reason
+# and re-evaluate whenever the dependency tree changes.
+
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+reason = "brace-expansion ReDoS. Dev-only transitive (eslint toolchain: @eslint/config-array, eslint-plugin-react, eslint-plugin-jsx-a11y via minimatch@3). The advisory affects all versions < 5.0.8, but 5.0.8 changed the module export shape and is incompatible with the pinned minimatch@3 (breaks eslint: 'expand is not a function'); no fixed version is compatible with the toolchain. Not shipped in the published @sgrs/client-ts / sgrs-client packages — `pnpm audit --prod --audit-level=high` is clean. Revisit when the eslint toolchain moves off minimatch@3."
