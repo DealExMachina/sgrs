@@ -93,6 +93,17 @@ CONTRADICTION = {
     "round": 1,
     "created_at": "2025-04-24T10:00:00Z",
 }
+DRIFT = {
+    "id": "66666666-6666-6666-6666-666666666666",
+    "scope_id": "test-scope",
+    "subject": "claim.ARR",
+    "previous_confidence": 0.9,
+    "current_confidence": 0.6,
+    "delta": -0.3,
+    "severity": "high",
+    "round": 1,
+    "created_at": "2025-04-24T10:00:00Z",
+}
 RISK = {
     "id": "33333333-3333-3333-3333-333333333333",
     "scope_id": "test-scope",
@@ -584,6 +595,271 @@ class TestReadHelpers:
     def test_get_latest_epoch_sync(self):
         client, rec = make_client(EPOCH)
         assert client.get_latest_epoch_sync("test-scope").ok is True
+
+
+# ─── Governance write helpers ────────────────────────────────────────────────
+
+
+class TestClaimWriteHelpers:
+    async def test_create_claim(self):
+        client, rec = make_client(CLAIM, status=201)
+        res = await client.create_claim(
+            scope_id="test-scope",
+            text="ARR grew 20%",
+            source="memo.pdf",
+            confidence=0.9,
+            dimension="claim_confidence",
+        )
+        assert res.ok is True
+        assert res.status_code == 201
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/claims"
+        assert rec.request.headers["X-Tenant-ID"] == TENANT
+        # round has a server-side default of 0 and is sent explicitly; None-valued
+        # optionals (document_id) are omitted.
+        assert rec.body == {
+            "scope_id": "test-scope",
+            "text": "ARR grew 20%",
+            "source": "memo.pdf",
+            "confidence": 0.9,
+            "dimension": "claim_confidence",
+            "round": 0,
+        }
+        assert res.data.text == "ARR grew 20%"
+
+    def test_create_claim_sync(self):
+        client, rec = make_client(CLAIM, status=201)
+        res = client.create_claim_sync(
+            scope_id="test-scope", text="t", source="s", confidence=0.5
+        )
+        assert res.ok is True and rec.request.method == "POST"
+        assert "document_id" not in rec.body
+
+    async def test_list_claims_by_doc_parses_record(self):
+        client, rec = make_client({"memo.pdf": [CLAIM], "email.txt": [CLAIM, CLAIM]})
+        res = await client.list_claims_by_doc("test-scope")
+        assert res.ok is True
+        assert rec.request.method == "GET"
+        assert rec.request.url.path == "/api/claims/test-scope/by-doc"
+        assert isinstance(res.data, dict)
+        assert len(res.data["memo.pdf"]) == 1
+        assert len(res.data["email.txt"]) == 2
+        assert res.data["memo.pdf"][0].text == "ARR grew 20%"
+
+    def test_list_claims_by_doc_sync(self):
+        client, rec = make_client({"memo.pdf": [CLAIM]})
+        res = client.list_claims_by_doc_sync("test-scope")
+        assert res.ok is True and isinstance(res.data, dict)
+
+
+class TestDriftHelpers:
+    async def test_list_drifts(self):
+        client, rec = make_client([DRIFT])
+        res = await client.list_drifts("test-scope")
+        assert res.ok is True
+        assert rec.request.url.path == "/api/drifts/test-scope"
+        assert isinstance(res.data, list) and res.data[0].severity == "high"
+
+    def test_list_drifts_sync(self):
+        client, rec = make_client([DRIFT])
+        assert client.list_drifts_sync("test-scope").ok is True
+
+    async def test_create_drift(self):
+        client, rec = make_client(DRIFT, status=201)
+        res = await client.create_drift(
+            scope_id="test-scope",
+            subject="claim.ARR",
+            previous_confidence=0.9,
+            current_confidence=0.6,
+            delta=-0.3,
+            severity="high",
+        )
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/drifts"
+        assert rec.body["subject"] == "claim.ARR"
+        assert rec.body["delta"] == -0.3
+        assert res.data.severity == "high"
+
+    def test_create_drift_sync(self):
+        client, rec = make_client(DRIFT, status=201)
+        res = client.create_drift_sync(
+            scope_id="test-scope",
+            subject="claim.ARR",
+            previous_confidence=0.9,
+            current_confidence=0.6,
+            delta=-0.3,
+            severity="high",
+        )
+        assert res.ok is True and rec.request.method == "POST"
+
+
+class TestContradictionWriteHelpers:
+    async def test_create_contradiction(self):
+        client, rec = make_client(CONTRADICTION, status=201)
+        res = await client.create_contradiction(
+            scope_id="test-scope",
+            claim_a="ARR grew",
+            claim_b="ARR shrank",
+            source_a="a.pdf",
+            source_b="b.pdf",
+            severity="critical",
+        )
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/contradictions"
+        assert rec.body["severity"] == "critical"
+        assert res.data.status == "open"
+
+    def test_create_contradiction_sync(self):
+        client, rec = make_client(CONTRADICTION, status=201)
+        res = client.create_contradiction_sync(
+            scope_id="test-scope",
+            claim_a="a",
+            claim_b="b",
+            source_a="sa",
+            source_b="sb",
+            severity="critical",
+        )
+        assert res.ok is True
+
+    async def test_resolve_contradiction(self):
+        resolved = {**CONTRADICTION, "status": "resolved", "resolution": "Reconciled", "resolved_by": "analyst"}
+        client, rec = make_client(resolved)
+        res = await client.resolve_contradiction(
+            CONTRADICTION["id"], "resolved", "analyst", resolution="Reconciled"
+        )
+        assert res.ok is True
+        assert rec.request.method == "PATCH"
+        assert rec.request.url.path == f"/api/contradictions/{CONTRADICTION['id']}"
+        assert rec.body == {"status": "resolved", "resolution": "Reconciled", "resolved_by": "analyst"}
+        assert res.data.status == "resolved"
+
+    def test_resolve_contradiction_sync_omits_none_resolution(self):
+        deferred = {**CONTRADICTION, "status": "deferred"}
+        client, rec = make_client(deferred)
+        res = client.resolve_contradiction_sync(CONTRADICTION["id"], "deferred", "analyst")
+        assert res.ok is True
+        assert rec.request.method == "PATCH"
+        # No resolution passed → omitted from the body.
+        assert rec.body == {"status": "deferred", "resolved_by": "analyst"}
+
+
+class TestRiskWriteHelpers:
+    async def test_create_risk(self):
+        client, rec = make_client(RISK, status=201)
+        res = await client.create_risk(
+            scope_id="test-scope",
+            description="Renewal risk",
+            level="high",
+            source="memo.pdf",
+        )
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/risks"
+        assert rec.body["level"] == "high"
+        assert res.data.level == "high"
+
+    def test_create_risk_sync(self):
+        client, rec = make_client(RISK, status=201)
+        res = client.create_risk_sync(
+            scope_id="test-scope", description="d", level="low", source="s", category="legal"
+        )
+        assert res.ok is True and rec.body["category"] == "legal"
+
+
+class TestDocumentWriteHelpers:
+    async def test_create_document(self):
+        client, rec = make_client(DOCUMENT, status=201)
+        res = await client.create_document(scope_id="test-scope", name="memo.pdf", type="pdf")
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/documents"
+        assert rec.body == {"scope_id": "test-scope", "name": "memo.pdf", "type": "pdf"}
+        assert res.data.name == "memo.pdf"
+
+    def test_create_document_sync(self):
+        client, rec = make_client(DOCUMENT, status=201)
+        res = client.create_document_sync(
+            scope_id="test-scope", name="memo.pdf", type="pdf", status="pending"
+        )
+        assert res.ok is True and rec.body["status"] == "pending"
+
+    async def test_patch_document(self):
+        client, rec = make_client(DOCUMENT)
+        res = await client.patch_document(DOCUMENT["id"], status="indexed", claim_count=3)
+        assert res.ok is True
+        assert rec.request.method == "PATCH"
+        assert rec.request.url.path == f"/api/documents/{DOCUMENT['id']}"
+        assert rec.body == {"status": "indexed", "claim_count": 3}
+        assert res.data.status == "indexed"
+
+    def test_patch_document_sync(self):
+        client, rec = make_client(DOCUMENT)
+        res = client.patch_document_sync(DOCUMENT["id"], claim_count=5)
+        assert res.ok is True and rec.body == {"claim_count": 5}
+
+
+class TestEpochWriteHelpers:
+    async def test_list_epochs(self):
+        client, rec = make_client([EPOCH])
+        res = await client.list_epochs("test-scope")
+        assert res.ok is True
+        assert rec.request.url.path == "/api/epochs/test-scope"
+        assert isinstance(res.data, list) and res.data[0].round == 2
+
+    def test_list_epochs_sync(self):
+        client, rec = make_client([EPOCH])
+        assert client.list_epochs_sync("test-scope").ok is True
+
+    async def test_create_epoch(self):
+        client, rec = make_client(EPOCH, status=201)
+        res = await client.create_epoch(
+            scope_id="test-scope",
+            round=2,
+            summary_text="Converging.",
+            score=0.8,
+            state="near-final",
+            claim_count=3,
+        )
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == "/api/epochs"
+        assert rec.body["summary_text"] == "Converging."
+        assert rec.body["claim_count"] == 3
+        assert res.data.round == 2
+
+    def test_create_epoch_sync(self):
+        client, rec = make_client(EPOCH, status=201)
+        res = client.create_epoch_sync(
+            scope_id="test-scope", round=2, summary_text="s", score=0.8, state="near-final"
+        )
+        assert res.ok is True
+
+    async def test_add_epoch_comment(self):
+        commented = {
+            **EPOCH,
+            "comments": [
+                {
+                    "id": "77777777-7777-7777-7777-777777777777",
+                    "author": "analyst",
+                    "text": "Looks good",
+                    "created_at": "2025-04-24T10:00:00Z",
+                }
+            ],
+        }
+        client, rec = make_client(commented)
+        res = await client.add_epoch_comment(EPOCH["id"], "analyst", "Looks good")
+        assert res.ok is True
+        assert rec.request.method == "POST"
+        assert rec.request.url.path == f"/api/epochs/{EPOCH['id']}/comments"
+        assert rec.body == {"author": "analyst", "text": "Looks good"}
+        assert res.data.comments[0].text == "Looks good"
+
+    def test_add_epoch_comment_sync(self):
+        client, rec = make_client(EPOCH)
+        res = client.add_epoch_comment_sync(EPOCH["id"], "analyst", "hi")
+        assert res.ok is True and rec.request.method == "POST"
 
 
 # ─── Error handling ──────────────────────────────────────────────────────────
