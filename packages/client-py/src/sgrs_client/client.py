@@ -1,6 +1,6 @@
 """SGRS API client — HTTP REST + optional NATS real-time events."""
 
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Literal, Optional, TypeVar, Union
 from urllib.parse import quote
 
 import httpx
@@ -8,19 +8,35 @@ from pydantic import BaseModel, ValidationError
 
 from .events.api import EventsApi, NatsConfig
 from .schema import (
+    AddEpochCommentBody,
     Agent,
     Claim,
     ConnectModelRequest,
     Contradiction,
+    ContradictionSeverity,
+    CreateClaimBody,
+    CreateContradictionBody,
+    CreateDriftBody,
+    CreateDocumentBody,
+    CreateEpochBody,
+    CreateRiskBody,
+    DocumentStatus,
+    Drift,
+    DriftSeverity,
     EpochSummary,
     FinalityCertificate,
+    FinalityDimension,
     FinalityStatus,
     IngestDocumentRequest,
     IngestDocumentResponse,
     ModelHandle,
+    PatchDocumentBody,
+    ResolveContradictionBody,
     Risk,
+    RiskLevel,
     Scope,
     ScopeId,
+    ScopeState,
     SgrsDocument,
     validate_tenant_id,
 )
@@ -165,10 +181,17 @@ class Client:
         data: Any,
         model: Optional[type[T]],
         is_list: bool,
+        is_map: bool = False,
     ) -> Any:
-        """Validate a decoded JSON body into the requested model shape."""
+        """Validate a decoded JSON body into the requested model shape.
+
+        ``is_map`` handles object responses that map a string key to a list of
+        ``model`` instances (e.g. the claims ``by-doc`` grouping).
+        """
         if model is None:
             return data
+        if is_map:
+            return {key: [model.model_validate(item) for item in items] for key, items in data.items()}
         if is_list:
             return [model.model_validate(item) for item in data]
         return model.model_validate(data)
@@ -197,6 +220,7 @@ class Client:
         body: Optional[dict[str, Any]] = None,
         *,
         is_list: bool = False,
+        is_map: bool = False,
         send_tenant: bool = True,
     ) -> ApiResponse[Any]:
         """Make an async HTTP request."""
@@ -206,7 +230,7 @@ class Client:
             )
             response.raise_for_status()
 
-            data = self._parse_data(response.json(), model, is_list)
+            data = self._parse_data(response.json(), model, is_list, is_map)
             return ApiResponse(ok=True, status_code=response.status_code, data=data)
 
         except httpx.HTTPStatusError as e:
@@ -242,6 +266,7 @@ class Client:
         body: Optional[dict[str, Any]] = None,
         *,
         is_list: bool = False,
+        is_map: bool = False,
         send_tenant: bool = True,
     ) -> ApiResponse[Any]:
         """Make a sync HTTP request."""
@@ -251,7 +276,7 @@ class Client:
             )
             response.raise_for_status()
 
-            data = self._parse_data(response.json(), model, is_list)
+            data = self._parse_data(response.json(), model, is_list, is_map)
             return ApiResponse(ok=True, status_code=response.status_code, data=data)
 
         except httpx.HTTPStatusError as e:
@@ -551,6 +576,396 @@ class Client:
     def get_latest_epoch_sync(self, scope_id: ScopeId) -> ApiResponse[EpochSummary]:
         """Get the latest epoch summary for a scope (sync)."""
         return self._sync_request("GET", f"/api/epochs/{_enc(scope_id)}/latest", EpochSummary)
+
+    # ── Governance write helpers — Claims ────────────────────────────────────────
+    async def create_claim(
+        self,
+        scope_id: ScopeId,
+        text: str,
+        source: str,
+        confidence: float,
+        *,
+        document_id: Optional[str] = None,
+        dimension: Optional[FinalityDimension] = None,
+        round: int = 0,
+    ) -> ApiResponse[Claim]:
+        """Create a claim (async). Mirrors ``POST /api/claims``."""
+        body = CreateClaimBody(
+            scope_id=scope_id,
+            text=text,
+            source=source,
+            confidence=confidence,
+            document_id=document_id,
+            dimension=dimension,
+            round=round,
+        )
+        return await self._async_request("POST", "/api/claims", Claim, self._dump(body))
+
+    def create_claim_sync(
+        self,
+        scope_id: ScopeId,
+        text: str,
+        source: str,
+        confidence: float,
+        *,
+        document_id: Optional[str] = None,
+        dimension: Optional[FinalityDimension] = None,
+        round: int = 0,
+    ) -> ApiResponse[Claim]:
+        """Create a claim (sync)."""
+        body = CreateClaimBody(
+            scope_id=scope_id,
+            text=text,
+            source=source,
+            confidence=confidence,
+            document_id=document_id,
+            dimension=dimension,
+            round=round,
+        )
+        return self._sync_request("POST", "/api/claims", Claim, self._dump(body))
+
+    async def list_claims_by_doc(self, scope_id: ScopeId) -> ApiResponse[dict[str, list[Claim]]]:
+        """Group a scope's claims by source document (async).
+
+        Returns an object mapping each ``source`` to its list of claims.
+        """
+        return await self._async_request(
+            "GET", f"/api/claims/{_enc(scope_id)}/by-doc", Claim, is_map=True
+        )
+
+    def list_claims_by_doc_sync(self, scope_id: ScopeId) -> ApiResponse[dict[str, list[Claim]]]:
+        """Group a scope's claims by source document (sync)."""
+        return self._sync_request(
+            "GET", f"/api/claims/{_enc(scope_id)}/by-doc", Claim, is_map=True
+        )
+
+    # ── Governance write helpers — Drifts ────────────────────────────────────────
+    async def list_drifts(self, scope_id: ScopeId) -> ApiResponse[list[Drift]]:
+        """List drifts detected for a scope (async)."""
+        return await self._async_request("GET", f"/api/drifts/{_enc(scope_id)}", Drift, is_list=True)
+
+    def list_drifts_sync(self, scope_id: ScopeId) -> ApiResponse[list[Drift]]:
+        """List drifts detected for a scope (sync)."""
+        return self._sync_request("GET", f"/api/drifts/{_enc(scope_id)}", Drift, is_list=True)
+
+    async def create_drift(
+        self,
+        scope_id: ScopeId,
+        subject: str,
+        previous_confidence: float,
+        current_confidence: float,
+        delta: float,
+        severity: DriftSeverity,
+        *,
+        claim_id: Optional[str] = None,
+        round: int = 0,
+    ) -> ApiResponse[Drift]:
+        """Create a drift (async). Mirrors ``POST /api/drifts``."""
+        body = CreateDriftBody(
+            scope_id=scope_id,
+            subject=subject,
+            previous_confidence=previous_confidence,
+            current_confidence=current_confidence,
+            delta=delta,
+            severity=severity,
+            claim_id=claim_id,
+            round=round,
+        )
+        return await self._async_request("POST", "/api/drifts", Drift, self._dump(body))
+
+    def create_drift_sync(
+        self,
+        scope_id: ScopeId,
+        subject: str,
+        previous_confidence: float,
+        current_confidence: float,
+        delta: float,
+        severity: DriftSeverity,
+        *,
+        claim_id: Optional[str] = None,
+        round: int = 0,
+    ) -> ApiResponse[Drift]:
+        """Create a drift (sync)."""
+        body = CreateDriftBody(
+            scope_id=scope_id,
+            subject=subject,
+            previous_confidence=previous_confidence,
+            current_confidence=current_confidence,
+            delta=delta,
+            severity=severity,
+            claim_id=claim_id,
+            round=round,
+        )
+        return self._sync_request("POST", "/api/drifts", Drift, self._dump(body))
+
+    # ── Governance write helpers — Contradictions ────────────────────────────────
+    async def create_contradiction(
+        self,
+        scope_id: ScopeId,
+        claim_a: str,
+        claim_b: str,
+        source_a: str,
+        source_b: str,
+        severity: ContradictionSeverity,
+        *,
+        round: int = 0,
+    ) -> ApiResponse[Contradiction]:
+        """Create a contradiction (async). Mirrors ``POST /api/contradictions``."""
+        body = CreateContradictionBody(
+            scope_id=scope_id,
+            claim_a=claim_a,
+            claim_b=claim_b,
+            source_a=source_a,
+            source_b=source_b,
+            severity=severity,
+            round=round,
+        )
+        return await self._async_request("POST", "/api/contradictions", Contradiction, self._dump(body))
+
+    def create_contradiction_sync(
+        self,
+        scope_id: ScopeId,
+        claim_a: str,
+        claim_b: str,
+        source_a: str,
+        source_b: str,
+        severity: ContradictionSeverity,
+        *,
+        round: int = 0,
+    ) -> ApiResponse[Contradiction]:
+        """Create a contradiction (sync)."""
+        body = CreateContradictionBody(
+            scope_id=scope_id,
+            claim_a=claim_a,
+            claim_b=claim_b,
+            source_a=source_a,
+            source_b=source_b,
+            severity=severity,
+            round=round,
+        )
+        return self._sync_request("POST", "/api/contradictions", Contradiction, self._dump(body))
+
+    async def resolve_contradiction(
+        self,
+        contradiction_id: str,
+        status: Literal["resolved", "deferred"],
+        resolved_by: str,
+        *,
+        resolution: Optional[str] = None,
+    ) -> ApiResponse[Contradiction]:
+        """Resolve or defer a contradiction (async). Mirrors ``PATCH /api/contradictions/:id``."""
+        body = ResolveContradictionBody(status=status, resolved_by=resolved_by, resolution=resolution)
+        return await self._async_request(
+            "PATCH", f"/api/contradictions/{_enc(contradiction_id)}", Contradiction, self._dump(body)
+        )
+
+    def resolve_contradiction_sync(
+        self,
+        contradiction_id: str,
+        status: Literal["resolved", "deferred"],
+        resolved_by: str,
+        *,
+        resolution: Optional[str] = None,
+    ) -> ApiResponse[Contradiction]:
+        """Resolve or defer a contradiction (sync)."""
+        body = ResolveContradictionBody(status=status, resolved_by=resolved_by, resolution=resolution)
+        return self._sync_request(
+            "PATCH", f"/api/contradictions/{_enc(contradiction_id)}", Contradiction, self._dump(body)
+        )
+
+    # ── Governance write helpers — Risks ─────────────────────────────────────────
+    async def create_risk(
+        self,
+        scope_id: ScopeId,
+        description: str,
+        level: RiskLevel,
+        source: str,
+        *,
+        category: Optional[str] = None,
+        document_id: Optional[str] = None,
+        round: int = 0,
+    ) -> ApiResponse[Risk]:
+        """Create a risk (async). Mirrors ``POST /api/risks``."""
+        body = CreateRiskBody(
+            scope_id=scope_id,
+            description=description,
+            level=level,
+            source=source,
+            category=category,
+            document_id=document_id,
+            round=round,
+        )
+        return await self._async_request("POST", "/api/risks", Risk, self._dump(body))
+
+    def create_risk_sync(
+        self,
+        scope_id: ScopeId,
+        description: str,
+        level: RiskLevel,
+        source: str,
+        *,
+        category: Optional[str] = None,
+        document_id: Optional[str] = None,
+        round: int = 0,
+    ) -> ApiResponse[Risk]:
+        """Create a risk (sync)."""
+        body = CreateRiskBody(
+            scope_id=scope_id,
+            description=description,
+            level=level,
+            source=source,
+            category=category,
+            document_id=document_id,
+            round=round,
+        )
+        return self._sync_request("POST", "/api/risks", Risk, self._dump(body))
+
+    # ── Governance write helpers — Documents ─────────────────────────────────────
+    async def create_document(
+        self,
+        scope_id: ScopeId,
+        name: str,
+        type: str,
+        *,
+        status: Optional[DocumentStatus] = None,
+        provenance: Optional[str] = None,
+    ) -> ApiResponse[SgrsDocument]:
+        """Register a document (async). Mirrors ``POST /api/documents``."""
+        body = CreateDocumentBody(
+            scope_id=scope_id, name=name, type=type, status=status, provenance=provenance
+        )
+        return await self._async_request("POST", "/api/documents", SgrsDocument, self._dump(body))
+
+    def create_document_sync(
+        self,
+        scope_id: ScopeId,
+        name: str,
+        type: str,
+        *,
+        status: Optional[DocumentStatus] = None,
+        provenance: Optional[str] = None,
+    ) -> ApiResponse[SgrsDocument]:
+        """Register a document (sync)."""
+        body = CreateDocumentBody(
+            scope_id=scope_id, name=name, type=type, status=status, provenance=provenance
+        )
+        return self._sync_request("POST", "/api/documents", SgrsDocument, self._dump(body))
+
+    async def patch_document(
+        self,
+        document_id: str,
+        *,
+        status: Optional[DocumentStatus] = None,
+        claim_count: Optional[int] = None,
+        provenance: Optional[str] = None,
+    ) -> ApiResponse[SgrsDocument]:
+        """Update a document's status and/or claim_count (async). Mirrors ``PATCH /api/documents/:id``."""
+        body = PatchDocumentBody(status=status, claim_count=claim_count, provenance=provenance)
+        return await self._async_request(
+            "PATCH", f"/api/documents/{_enc(document_id)}", SgrsDocument, self._dump(body)
+        )
+
+    def patch_document_sync(
+        self,
+        document_id: str,
+        *,
+        status: Optional[DocumentStatus] = None,
+        claim_count: Optional[int] = None,
+        provenance: Optional[str] = None,
+    ) -> ApiResponse[SgrsDocument]:
+        """Update a document's status and/or claim_count (sync)."""
+        body = PatchDocumentBody(status=status, claim_count=claim_count, provenance=provenance)
+        return self._sync_request(
+            "PATCH", f"/api/documents/{_enc(document_id)}", SgrsDocument, self._dump(body)
+        )
+
+    # ── Governance write helpers — Epochs ────────────────────────────────────────
+    async def list_epochs(self, scope_id: ScopeId) -> ApiResponse[list[EpochSummary]]:
+        """List epoch summaries for a scope (async)."""
+        return await self._async_request(
+            "GET", f"/api/epochs/{_enc(scope_id)}", EpochSummary, is_list=True
+        )
+
+    def list_epochs_sync(self, scope_id: ScopeId) -> ApiResponse[list[EpochSummary]]:
+        """List epoch summaries for a scope (sync)."""
+        return self._sync_request(
+            "GET", f"/api/epochs/{_enc(scope_id)}", EpochSummary, is_list=True
+        )
+
+    async def create_epoch(
+        self,
+        scope_id: ScopeId,
+        round: int,
+        summary_text: str,
+        score: float,
+        state: ScopeState,
+        *,
+        claim_count: int = 0,
+        drift_count: int = 0,
+        contradiction_count: int = 0,
+        risk_count: int = 0,
+    ) -> ApiResponse[EpochSummary]:
+        """Create an epoch summary (async). Mirrors ``POST /api/epochs``."""
+        body = CreateEpochBody(
+            scope_id=scope_id,
+            round=round,
+            summary_text=summary_text,
+            score=score,
+            state=state,
+            claim_count=claim_count,
+            drift_count=drift_count,
+            contradiction_count=contradiction_count,
+            risk_count=risk_count,
+        )
+        return await self._async_request("POST", "/api/epochs", EpochSummary, self._dump(body))
+
+    def create_epoch_sync(
+        self,
+        scope_id: ScopeId,
+        round: int,
+        summary_text: str,
+        score: float,
+        state: ScopeState,
+        *,
+        claim_count: int = 0,
+        drift_count: int = 0,
+        contradiction_count: int = 0,
+        risk_count: int = 0,
+    ) -> ApiResponse[EpochSummary]:
+        """Create an epoch summary (sync)."""
+        body = CreateEpochBody(
+            scope_id=scope_id,
+            round=round,
+            summary_text=summary_text,
+            score=score,
+            state=state,
+            claim_count=claim_count,
+            drift_count=drift_count,
+            contradiction_count=contradiction_count,
+            risk_count=risk_count,
+        )
+        return self._sync_request("POST", "/api/epochs", EpochSummary, self._dump(body))
+
+    async def add_epoch_comment(
+        self, epoch_id: str, author: str, text: str
+    ) -> ApiResponse[EpochSummary]:
+        """Add a HITL comment to an epoch summary (async). Mirrors ``POST /api/epochs/:id/comments``.
+
+        Returns the updated epoch summary (with the new comment appended).
+        """
+        body = AddEpochCommentBody(author=author, text=text)
+        return await self._async_request(
+            "POST", f"/api/epochs/{_enc(epoch_id)}/comments", EpochSummary, self._dump(body)
+        )
+
+    def add_epoch_comment_sync(
+        self, epoch_id: str, author: str, text: str
+    ) -> ApiResponse[EpochSummary]:
+        """Add a HITL comment to an epoch summary (sync)."""
+        body = AddEpochCommentBody(author=author, text=text)
+        return self._sync_request(
+            "POST", f"/api/epochs/{_enc(epoch_id)}/comments", EpochSummary, self._dump(body)
+        )
 
 
 def create_client(
