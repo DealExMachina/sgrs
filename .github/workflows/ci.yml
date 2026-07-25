@@ -101,7 +101,7 @@ jobs:
           python-version: "3.12"
       - name: Install package + Sphinx
         working-directory: packages/client-py
-        run: uv sync --locked --extra docs
+        run: uv sync --frozen --extra docs
       - name: Build HTML
         working-directory: packages/client-py
         run: uv run --extra docs python -m sphinx.cmd.build -W -b html docs docs/_build/html
@@ -120,7 +120,7 @@ jobs:
       - name: Install + test
         working-directory: packages/client-py
         run: |
-          uv sync --locked --extra dev --extra test
+          uv sync --frozen --extra dev --extra test
           uv run pytest --ignore=tests/test_performance.py
 
   osv-scanner:
