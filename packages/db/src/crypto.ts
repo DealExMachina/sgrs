@@ -11,7 +11,12 @@
  * absent or malformed — before accepting any traffic.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHmac,
+  randomBytes,
+} from "node:crypto";
 
 const ALGORITHM = "aes-256-gcm";
 /** 96-bit nonce is the recommended IV size for GCM. */
@@ -106,4 +111,35 @@ export function decryptApiKey(ciphertext: string): string {
 
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   return decrypted.toString("utf8");
+}
+
+// ─── Product API keys (sk_…) ──────────────────────────────────────────────────
+
+function resolvePepper(): string {
+  const pepper = process.env.API_KEY_PEPPER ?? process.env.ENCRYPTION_KEY;
+  if (!pepper) {
+    throw new Error(
+      "[SGRS][crypto] API_KEY_PEPPER (or ENCRYPTION_KEY fallback) is required for sk_ API keys.",
+    );
+  }
+  return pepper;
+}
+
+/** SHA-256 HMAC of a product API key for lookup/storage. */
+export function hashApiKey(plaintext: string): string {
+  return createHmac("sha256", resolvePepper()).update(plaintext).digest("hex");
+}
+
+export type ApiKeyEnv = "live" | "test";
+
+/** Generate a one-time-display product API key and its stored hash. */
+export function generateTenantApiKey(env: ApiKeyEnv = "live"): {
+  key: string;
+  prefix: string;
+  hash: string;
+} {
+  const raw = randomBytes(32).toString("base64url");
+  const key = `sk_${env}_${raw}`;
+  const prefix = key.slice(0, 16);
+  return { key, prefix, hash: hashApiKey(key) };
 }

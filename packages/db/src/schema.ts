@@ -56,6 +56,118 @@ export const contradictionStatusEnum = pgEnum("contradiction_status", ["open", "
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high", "critical"]);
 export const documentStatusEnum = pgEnum("document_status", ["pending", "processing", "indexed", "failed"]);
 
+// ─── Auth tables ──────────────────────────────────────────────────────────────
+
+/**
+ * Product organizations (Clerk org = billing + IAM boundary).
+ * Governance tables keep denormalized `tenant_id` (= org id slug).
+ */
+export const organizations = pgTable("organizations", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  clerk_org_id: text("clerk_org_id"),
+  /** Legacy personal workspace; null when org is Clerk-backed. */
+  clerk_user_id: text("clerk_user_id"),
+  kernel_tenant_uuid: text("kernel_tenant_uuid"),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+/** @deprecated Use {@link organizations} — table renamed in migration 0004. */
+export const tenants = organizations;
+
+export const orgRoleEnum = pgEnum("org_role", ["org_admin", "org_member"]);
+
+export const projectRoleEnum = pgEnum("project_role", [
+  "project_admin",
+  "project_editor",
+  "project_viewer",
+]);
+
+export const scopePermissionEnum = pgEnum("scope_permission", [
+  "scope_admin",
+  "scope_editor",
+  "scope_ingest",
+  "scope_viewer",
+]);
+
+/**
+ * Projects — workspace between organization and scopes.
+ */
+export const projects = pgTable("projects", {
+  id: text("id").primaryKey(),
+  org_id: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const orgMemberships = pgTable("org_memberships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  org_id: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  clerk_user_id: text("clerk_user_id").notNull(),
+  role: orgRoleEnum("role").notNull().default("org_member"),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const projectMemberships = pgTable("project_memberships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  project_id: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  clerk_user_id: text("clerk_user_id").notNull(),
+  role: projectRoleEnum("role").notNull().default("project_viewer"),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const scopeGrants = pgTable("scope_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  scope_id: text("scope_id").notNull(),
+  org_id: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  clerk_user_id: text("clerk_user_id").notNull(),
+  permission: scopePermissionEnum("permission").notNull().default("scope_viewer"),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+/**
+ * Hashed product API keys for SGRS client libraries (`sk_live_…` / `sk_test_…`).
+ * Plaintext is shown once at creation; only SHA-256(pepper + key) is stored.
+ */
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  org_id: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  project_id: text("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+  name: text("name").notNull(),
+  key_prefix: text("key_prefix").notNull(),
+  key_hash: text("key_hash").notNull(),
+  created_by: text("created_by"),
+  scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+  revoked_at: timestamp("revoked_at", { withTimezone: true }),
+  last_used_at: timestamp("last_used_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
 /**
@@ -64,6 +176,9 @@ export const documentStatusEnum = pgEnum("document_status", ["pending", "process
 export const scopes = pgTable("scopes", {
   id: text("id").primaryKey(),
   tenant_id: text("tenant_id").notNull(),
+  project_id: text("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   tag: text("tag").notNull(),
   state: scopeStateEnum("state").notNull().default("active"),
@@ -319,3 +434,14 @@ export type DocumentRow = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 export type EpochSummaryRow = typeof epochSummaries.$inferSelect;
 export type NewEpochSummary = typeof epochSummaries.$inferInsert;
+export type TenantRow = typeof organizations.$inferSelect;
+export type NewTenant = typeof organizations.$inferInsert;
+export type OrganizationRow = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;
+export type ProjectRow = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type OrgMembershipRow = typeof orgMemberships.$inferSelect;
+export type ProjectMembershipRow = typeof projectMemberships.$inferSelect;
+export type ScopeGrantRow = typeof scopeGrants.$inferSelect;
+export type ApiKeyRow = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;

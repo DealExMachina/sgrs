@@ -21,8 +21,10 @@
     "@sgrs/api-schema": "workspace:*",
     "@sgrs/client-ts": "workspace:*",
     "@sgrs/db": "workspace:*",
+    "@clerk/backend": "^2.6.0",
     "drizzle-orm": "0.45.2",
     "hono": "4.12.31",
+    "svix": "^1.62.0",
     "zod": "^4.4.1"
   },
   "devDependencies": {

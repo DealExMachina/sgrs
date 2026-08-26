@@ -140,9 +140,13 @@ export interface UseDomainDataResult extends DomainState {
 export function useDomainData(
   scopeId: string | null,
   tenantId: string,
+  projectId?: string,
 ): UseDomainDataResult {
   const [state, dispatch] = useReducer(reducer, INITIAL);
-  const api = useMemo(() => createClient({ tenantId }), [tenantId]);
+  const api = useMemo(
+    () => createClient({ tenantId, projectId }),
+    [tenantId, projectId],
+  );
 
   const fetchAll = useCallback(async () => {
     if (!scopeId) return;

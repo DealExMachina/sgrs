@@ -36,13 +36,20 @@
 
 import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import type { Context, MiddlewareHandler, Next } from "hono";
-import type { AnalyticsDb } from "@sgrs/db";
+import type { AnalyticsDb, Db } from "@sgrs/db";
+import { verifyClerkBearer } from "./clerkSession.js";
+import {
+  ensureOrgForClerkOrg,
+  ensurePersonalOrg,
+  lookupApiKey,
+} from "../services/organizations.js";
 
 export type AuthTier = "tenant" | "admin" | "godlike";
 
 declare module "hono" {
   interface ContextVariableMap {
     authTier: AuthTier;
+    authMethod?: "env" | "api_key" | "clerk";
   }
 }
 
@@ -84,6 +91,68 @@ function resolvePresentedTier(token: string): AuthTier | null {
   return null;
 }
 
+interface ProductAuthResult {
+  tier: AuthTier;
+  tenantId?: string;
+  keyId: string;
+  method: "api_key" | "clerk";
+}
+
+/** Resolve sk_ product keys and Clerk JWTs (tenant tier only). */
+async function resolveProductAuth(
+  opts: TierMiddlewareOptions,
+  token: string,
+): Promise<ProductAuthResult | null> {
+  if (!opts.db) return null;
+
+  if (token.startsWith("sk_")) {
+    const row = await lookupApiKey(opts.db, token);
+    if (!row) return null;
+    return {
+      tier: "tenant",
+      tenantId: row.org_id,
+      keyId: row.key_prefix,
+      method: "api_key",
+    };
+  }
+
+  if (process.env.CLERK_SECRET_KEY) {
+    const session = await verifyClerkBearer(token);
+    if (!session) return null;
+    const first =
+      typeof session.payload.first_name === "string"
+        ? session.payload.first_name
+        : "";
+    const last =
+      typeof session.payload.last_name === "string"
+        ? session.payload.last_name
+        : "";
+    const email =
+      typeof session.payload.email === "string" ? session.payload.email : "";
+    const name = `${first} ${last}`.trim() || email || session.sub;
+    const org = session.orgId
+      ? await ensureOrgForClerkOrg(opts.db, session.orgId, name, session.sub)
+      : await ensurePersonalOrg(opts.db, session.sub, name);
+    return {
+      tier: "tenant",
+      tenantId: org.id,
+      keyId: `clerk:${session.sub.slice(0, 8)}`,
+      method: "clerk",
+    };
+  }
+
+  return null;
+}
+
+function productAuthEnabled(opts: TierMiddlewareOptions): boolean {
+  return Boolean(
+    opts.db &&
+      (process.env.CLERK_SECRET_KEY ||
+        process.env.API_KEY_PEPPER ||
+        process.env.ENCRYPTION_KEY),
+  );
+}
+
 /** First IP from X-Forwarded-For, then X-Real-IP. */
 function clientIp(c: Context): string | null {
   const xff = c.req.header("x-forwarded-for");
@@ -103,6 +172,8 @@ function ipAllowed(ip: string | null, allowlistCsv: string): boolean {
 export interface TierMiddlewareOptions {
   /** Optional analytics DB; required only if you want auth audit rows. */
   analytics?: AnalyticsDb;
+  /** Product DB — enables sk_ API keys and Clerk session JWT on tenant tier. */
+  db?: Db;
 }
 
 interface AuditPayload {
@@ -154,8 +225,30 @@ async function audit(
 export function makeRequireTier(opts: TierMiddlewareOptions = {}) {
   return (min: AuthTier): MiddlewareHandler =>
     async (c: Context, next: Next) => {
-      // Tenant dev-mode: no tenant key configured → open route.
+      const authHeader = c.req.header("authorization") ?? "";
+      const bearerToken = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7).trim()
+        : null;
+
+      // Tenant dev-mode: no env tenant key → open unless a product token is sent.
       if (min === "tenant" && !tenantKey()) {
+        if (bearerToken && productAuthEnabled(opts)) {
+          const product = await resolveProductAuth(opts, bearerToken);
+          if (product && TIER_RANK[product.tier] >= TIER_RANK[min]) {
+            c.set("authTier", product.tier);
+            c.set("authMethod", product.method);
+            if (product.tenantId) c.set("tenantId", product.tenantId);
+            await next();
+            return;
+          }
+          if (bearerToken.startsWith("sk_") || process.env.CLERK_SECRET_KEY) {
+            await audit(c, opts, min, "deny", null, null, "invalid_product_auth");
+            return c.json(
+              { error: "Invalid API key or session.", code: "AUTH_INVALID" },
+              401,
+            );
+          }
+        }
         c.set("authTier", "tenant");
         await next();
         return;
@@ -179,7 +272,6 @@ export function makeRequireTier(opts: TierMiddlewareOptions = {}) {
         );
       }
 
-      const authHeader = c.req.header("authorization") ?? "";
       if (!authHeader.startsWith("Bearer ")) {
         await audit(c, opts, min, "deny", null, null, "missing_bearer");
         return c.json(
@@ -191,8 +283,23 @@ export function makeRequireTier(opts: TierMiddlewareOptions = {}) {
         );
       }
 
-      const token = authHeader.slice(7).trim();
-      const presented = resolvePresentedTier(token);
+      const token = bearerToken ?? authHeader.slice(7).trim();
+      let presented = resolvePresentedTier(token);
+      let presentedKeyId = presented ? keyId(token) : null;
+      let authMethod: "env" | "api_key" | "clerk" | undefined = presented
+        ? "env"
+        : undefined;
+
+      if (!presented && min === "tenant" && productAuthEnabled(opts)) {
+        const product = await resolveProductAuth(opts, token);
+        if (product) {
+          presented = product.tier;
+          presentedKeyId = product.keyId;
+          authMethod = product.method;
+          if (product.tenantId) c.set("tenantId", product.tenantId);
+        }
+      }
+
       if (!presented) {
         await audit(c, opts, min, "deny", null, null, "invalid_key");
         return c.json(
@@ -247,6 +354,7 @@ export function makeRequireTier(opts: TierMiddlewareOptions = {}) {
       }
 
       c.set("authTier", presented);
+      if (authMethod) c.set("authMethod", authMethod);
 
       // Audit allow only for elevated tiers; tenant is too noisy and routes
       // already audit their own mutations.
@@ -265,10 +373,16 @@ export function makeRequireTier(opts: TierMiddlewareOptions = {}) {
  * godlike tier is enabled without an IP allowlist.
  */
 export function validateAuthConfig(): void {
-  if (!tenantKey()) {
+  const hasEnvTenant = tenantKey() != null;
+  const hasClerk = Boolean(process.env.CLERK_SECRET_KEY);
+  const hasProductKeys = Boolean(
+    process.env.API_KEY_PEPPER ?? process.env.ENCRYPTION_KEY,
+  );
+
+  if (!hasEnvTenant && !hasClerk && !hasProductKeys) {
     throw new Error(
-      "[SGRS][auth] Neither TENANT_API_KEY nor legacy API_KEY is set. " +
-        "Tenant tier requires a Bearer secret in production.",
+      "[SGRS][auth] Production requires TENANT_API_KEY (legacy), CLERK_SECRET_KEY, " +
+        "or API_KEY_PEPPER for sk_ product keys.",
     );
   }
   if (process.env.GODLIKE_API_KEY && !process.env.GODLIKE_IP_ALLOWLIST) {
@@ -283,6 +397,10 @@ export function validateAuthConfig(): void {
 export function authTierStatus() {
   return {
     tenant: tenantKey() != null,
+    tenant_product_keys: Boolean(
+      process.env.API_KEY_PEPPER ?? process.env.ENCRYPTION_KEY,
+    ),
+    clerk: Boolean(process.env.CLERK_SECRET_KEY),
     admin: adminKey() != null,
     godlike: godlikeKey() != null,
     godlike_ip_restricted: Boolean(

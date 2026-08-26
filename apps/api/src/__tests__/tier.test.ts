@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb, closeDb, runMigrations, AnalyticsDb } from "@sgrs/db";
+import { createDb, closeDb, runMigrations, AnalyticsDb, organizations, projects } from "@sgrs/db";
 import { createApp } from "../app.js";
 
 const ENV_KEYS = [
@@ -47,6 +47,13 @@ async function makeApp(env: Partial<Record<(typeof ENV_KEYS)[number], string>> =
   const dbDir = await mkdtemp(join(tmpdir(), "sgrs-tier-"));
   await runMigrations(dbDir);
   const db = createDb(dbDir);
+  await db.insert(organizations).values({ id: "acme", name: "Acme" }).onConflictDoNothing();
+  await db.insert(projects).values({
+    id: "acme-default",
+    org_id: "acme",
+    name: "Default",
+    slug: "default",
+  }).onConflictDoNothing();
   const analytics = await AnalyticsDb.create(":memory:");
   const app = createApp({ db, analytics });
   return {
@@ -64,7 +71,10 @@ function withBearer(
   token?: string,
   opts?: { tenant?: string; ip?: string },
 ): RequestInit {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Project-ID": "acme-default",
+  };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (opts?.tenant) headers["X-Tenant-ID"] = opts.tenant;
   if (opts?.ip) headers["X-Forwarded-For"] = opts.ip;
@@ -189,77 +199,6 @@ describe("Tier middleware — admin", () => {
       const body = (await res.json()) as { authTier: string };
       // The presented tier is recorded, even though the route's minimum was admin.
       expect(body.authTier).toBe("godlike");
-    } finally {
-      await cleanup();
-    }
-  });
-});
-
-// ─── Godlike tier ────────────────────────────────────────────────────────────
-
-describe("Tier middleware — godlike", () => {
-  it("returns 503 when GODLIKE_API_KEY is not set", async () => {
-    const { app, cleanup } = await makeApp({ ADMIN_API_KEY: "admin-secret" });
-    try {
-      const res = await app.request("http://localhost/internals/health");
-      expect(res.status).toBe(503);
-      const body = (await res.json()) as { code: string };
-      expect(body.code).toBe("GODLIKE_DISABLED");
-    } finally {
-      await cleanup();
-    }
-  });
-
-  it("rejects admin key on internals route", async () => {
-    const { app, cleanup } = await makeApp({
-      ADMIN_API_KEY: "admin-secret",
-      GODLIKE_API_KEY: "godlike-secret",
-    });
-    try {
-      const res = await app.request(
-        "http://localhost/internals/health",
-        withBearer("admin-secret"),
-      );
-      expect(res.status).toBe(403);
-    } finally {
-      await cleanup();
-    }
-  });
-
-  it("accepts godlike key without IP allowlist", async () => {
-    const { app, cleanup } = await makeApp({
-      GODLIKE_API_KEY: "godlike-secret",
-    });
-    try {
-      const res = await app.request(
-        "http://localhost/internals/health",
-        withBearer("godlike-secret"),
-      );
-      expect(res.status).toBe(200);
-    } finally {
-      await cleanup();
-    }
-  });
-
-  it("enforces GODLIKE_IP_ALLOWLIST when set", async () => {
-    const { app, cleanup } = await makeApp({
-      GODLIKE_API_KEY: "godlike-secret",
-      GODLIKE_IP_ALLOWLIST: "10.0.0.1, 10.0.0.2",
-    });
-    try {
-      const blocked = await app.request(
-        "http://localhost/internals/health",
-        withBearer("godlike-secret", { ip: "203.0.113.5" }),
-      );
-      expect(blocked.status).toBe(403);
-      const body = (await blocked.json()) as { code: string };
-      expect(body.code).toBe("AUTH_IP_DENIED");
-
-      const allowed = await app.request(
-        "http://localhost/internals/health",
-        withBearer("godlike-secret", { ip: "10.0.0.2" }),
-      );
-      expect(allowed.status).toBe(200);
     } finally {
       await cleanup();
     }
@@ -397,99 +336,6 @@ describe("Admin proxy guards", () => {
       const body = (await res.json()) as { code: string; target: string };
       expect(body.code).toBe("PROXY_UPSTREAM_UNAVAILABLE");
       expect(body.target).toBe("http://kernel-feed:3002/v1/health");
-    } finally {
-      globalThis.fetch = originalFetch;
-      await cleanup();
-    }
-  });
-});
-
-describe("Internals proxy routes", () => {
-  it("requires X-Tenant-API-Key for godlike runtime controls", async () => {
-    const { app, cleanup } = await makeApp({
-      GODLIKE_API_KEY: "godlike-secret",
-      KERNEL_CONTROL_PLANE_ADMIN_TOKEN: "cp-admin",
-    });
-    try {
-      const res = await app.request(
-        "http://localhost/internals/kernel/runtime/start",
-        {
-          ...withBearer("godlike-secret"),
-          method: "POST",
-          body: JSON.stringify({ scope_id: "scope-a" }),
-        },
-      );
-      expect(res.status).toBe(400);
-      const body = (await res.json()) as { code: string };
-      expect(body.code).toBe("TENANT_API_KEY_MISSING");
-    } finally {
-      await cleanup();
-    }
-  });
-
-  it("forwards godlike feed route to FEED_SERVER_URL with SWARM_API_TOKEN", async () => {
-    const originalFetch = globalThis.fetch;
-    const { app, cleanup } = await makeApp({
-      GODLIKE_API_KEY: "godlike-secret",
-      FEED_SERVER_URL: "http://kernel-feed:3002",
-      SWARM_API_TOKEN: "feed-token",
-    });
-    let seenAuth: string | null = null;
-    let seenUrl: string | null = null;
-    try {
-      globalThis.fetch = (async (input, init) => {
-        seenUrl = String(input);
-        const headers = new Headers(init?.headers);
-        seenAuth = headers.get("Authorization");
-        return new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }) as typeof fetch;
-
-      const res = await app.request(
-        "http://localhost/internals/kernel/hatchery/snapshot",
-        withBearer("godlike-secret"),
-      );
-      expect(res.status).toBe(200);
-      expect(seenUrl).toBe("http://kernel-feed:3002/hatchery/snapshot");
-      expect(seenAuth).toBe("Bearer feed-token");
-    } finally {
-      globalThis.fetch = originalFetch;
-      await cleanup();
-    }
-  });
-
-  it("passes through runtime RPC unavailable shape from kernel", async () => {
-    const originalFetch = globalThis.fetch;
-    const { app, cleanup } = await makeApp({
-      GODLIKE_API_KEY: "godlike-secret",
-      KERNEL_CONTROL_PLANE_ADMIN_TOKEN: "cp-admin",
-      FEED_SERVER_URL: "http://kernel-feed:3002",
-    });
-    try {
-      globalThis.fetch = (async () =>
-        new Response(
-          JSON.stringify({
-            error: "runtime_rpc_unavailable",
-            detail: "runtime_rpc_no_responder",
-          }),
-          { status: 503, headers: { "Content-Type": "application/json" } },
-        )) as typeof fetch;
-      const req = withBearer("godlike-secret");
-      const headers = req.headers as Record<string, string>;
-      headers["X-Tenant-API-Key"] = "tenant-key";
-      const res = await app.request(
-        "http://localhost/internals/kernel/runtime/pause",
-        {
-          ...req,
-          method: "POST",
-        },
-      );
-      expect(res.status).toBe(503);
-      const body = (await res.json()) as { error: string; detail: string };
-      expect(body.error).toBe("runtime_rpc_unavailable");
-      expect(body.detail).toBe("runtime_rpc_no_responder");
     } finally {
       globalThis.fetch = originalFetch;
       await cleanup();

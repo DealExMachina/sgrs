@@ -5,8 +5,7 @@
  * distinct bearer key (see middleware/tier.ts):
  *
  *   /api/*        — tenant tier   (TENANT_API_KEY or legacy API_KEY) + X-Tenant-ID
- *   /admin/*      — admin tier    (ADMIN_API_KEY) — setup and manage the swarm
- *   /internals/*  — godlike tier  (GODLIKE_API_KEY + IP allowlist) — deep internals
+ *   /admin/*      — admin tier    (ADMIN_API_KEY) — operator setup (kernel proxy)
  *
  * Higher-tier keys also unlock lower-tier routes (hierarchical), but the
  * actual presented tier is recorded in the audit log.
@@ -33,8 +32,12 @@ import { createRisksRouter } from "./routes/risks.js";
 import { createDocumentsRouter } from "./routes/documents.js";
 import { createEpochsRouter } from "./routes/epochs.js";
 import { createIngestRouter } from "./routes/ingest.js";
+import { createKeysRouter } from "./routes/keys.js";
+import { createMeRouter } from "./routes/me.js";
+import { createClerkWebhookRouter } from "./routes/clerkWebhook.js";
+import { createProjectsRouter } from "./routes/projects.js";
+import { makeRequireProject } from "./services/permissions.js";
 import { createAdminRouter } from "./routes/admin/index.js";
-import { createInternalsRouter } from "./routes/internals/index.js";
 import type { Db, AnalyticsDb } from "@sgrs/db";
 import type { EventsApi } from "@sgrs/client-ts";
 
@@ -72,6 +75,7 @@ export function createApp({ db, analytics, events, corsOrigins }: AppConfig) {
         "Content-Type",
         "Authorization",
         "X-Tenant-ID",
+        "X-Project-ID",
         "X-Tenant-API-Key",
         "X-Forwarded-For",
         "X-Real-IP",
@@ -84,15 +88,36 @@ export function createApp({ db, analytics, events, corsOrigins }: AppConfig) {
   // ── Error handler ──────────────────────────────────────────────────────────
   app.onError(errorHandler);
 
-  const requireTier = makeRequireTier({ analytics });
+  const requireTier = makeRequireTier({ analytics, db });
 
   // ── Health (no auth, no tenant) ────────────────────────────────────────────
   app.route("/api/health", createHealthRouter(db));
+
+  // ── Clerk webhook (unsigned tier; Svix-verified) ───────────────────────────
+  app.route("/webhooks/clerk", createClerkWebhookRouter(db));
+
+  // ── Session profile (Clerk; sets tenantId before tenant middleware) ────────
+  app.route("/api/me", createMeRouter(db));
 
   // ── Tenant tier ────────────────────────────────────────────────────────────
   const api = new Hono();
   api.use("*", requireTier("tenant"));
   api.use("*", tenantMiddleware);
+
+  api.route("/keys", createKeysRouter(db));
+
+  const requireProject = makeRequireProject(db);
+  api.use("/scopes/*", requireProject);
+  api.use("/claims/*", requireProject);
+  api.use("/drifts/*", requireProject);
+  api.use("/contradictions/*", requireProject);
+  api.use("/risks/*", requireProject);
+  api.use("/documents/*", requireProject);
+  api.use("/finality/*", requireProject);
+  api.use("/epochs/*", requireProject);
+  api.use("/ingest/*", requireProject);
+
+  api.route("/projects", createProjectsRouter(db));
 
   api.route("/scopes", createScopesRouter(db, analytics, events));
   api.route("/models", createModelsRouter(db, analytics, events));
@@ -113,12 +138,6 @@ export function createApp({ db, analytics, events, corsOrigins }: AppConfig) {
   admin.use("*", requireTier("admin"));
   admin.route("/", createAdminRouter(db, analytics, events));
   app.route("/admin", admin);
-
-  // ── Godlike tier (deep internals, dev-only) ────────────────────────────────
-  const internals = new Hono();
-  internals.use("*", requireTier("godlike"));
-  internals.route("/", createInternalsRouter(db, analytics, events));
-  app.route("/internals", internals);
 
   // ── 404 catch-all ─────────────────────────────────────────────────────────
   app.notFound((c) =>

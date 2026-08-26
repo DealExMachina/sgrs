@@ -29,6 +29,16 @@ export {
   risks,
   documents,
   epochSummaries,
+  organizations,
+  tenants,
+  projects,
+  orgMemberships,
+  projectMemberships,
+  scopeGrants,
+  apiKeys,
+  orgRoleEnum,
+  projectRoleEnum,
+  scopePermissionEnum,
   scopeStateEnum,
   modelProviderEnum,
   agentRoleEnum,
@@ -62,10 +72,28 @@ export type {
   NewDocument,
   EpochSummaryRow,
   NewEpochSummary,
+  TenantRow,
+  NewTenant,
+  OrganizationRow,
+  NewOrganization,
+  ProjectRow,
+  NewProject,
+  OrgMembershipRow,
+  ProjectMembershipRow,
+  ScopeGrantRow,
+  ApiKeyRow,
+  NewApiKey,
 } from "./schema.js";
 
 // Cryptography
-export { encryptApiKey, decryptApiKey, validateEncryptionKey } from "./crypto.js";
+export {
+  encryptApiKey,
+  decryptApiKey,
+  validateEncryptionKey,
+  hashApiKey,
+  generateTenantApiKey,
+} from "./crypto.js";
+export type { ApiKeyEnv } from "./crypto.js";
 
 // Migrations
 export { runMigrations } from "./migrate.js";

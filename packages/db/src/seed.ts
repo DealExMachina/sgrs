@@ -20,17 +20,40 @@ import {
   agents,
   finalityStatus,
   modelHandles,
+  organizations,
+  projects,
   scopes,
 } from "./schema.js";
 
-const TENANT = "deal-ex-machina";
+const ORG = "deal-ex-machina";
+const DEFAULT_PROJECT_ID = `${ORG}-default`;
+
+// ─── Organization + default project ───────────────────────────────────────────
+
+async function seedOrgAndProject(db: Db) {
+  await db
+    .insert(organizations)
+    .values({ id: ORG, name: "Deal Ex Machina" })
+    .onConflictDoNothing();
+
+  await db
+    .insert(projects)
+    .values({
+      id: DEFAULT_PROJECT_ID,
+      org_id: ORG,
+      name: "Default project",
+      slug: "default",
+    })
+    .onConflictDoNothing();
+}
 
 // ─── Scopes ───────────────────────────────────────────────────────────────────
 
 const SEED_SCOPES = [
   {
     id: "deal-horizon",
-    tenant_id: TENANT,
+    tenant_id: ORG,
+    project_id: DEFAULT_PROJECT_ID,
     name: "Horizon",
     tag: "M&A",
     state: "near-final" as const,
@@ -39,7 +62,8 @@ const SEED_SCOPES = [
   },
   {
     id: "green-bond-2026",
-    tenant_id: TENANT,
+    tenant_id: ORG,
+    project_id: DEFAULT_PROJECT_ID,
     name: "Green Bond 2026",
     tag: "EUGBS",
     state: "active" as const,
@@ -48,7 +72,8 @@ const SEED_SCOPES = [
   },
   {
     id: "solvency-ii-q1",
-    tenant_id: TENANT,
+    tenant_id: ORG,
+    project_id: DEFAULT_PROJECT_ID,
     name: "Solvency II Q1",
     tag: "Insurance",
     state: "resolved" as const,
@@ -57,7 +82,8 @@ const SEED_SCOPES = [
   },
   {
     id: "kyc-2025-h2",
-    tenant_id: TENANT,
+    tenant_id: ORG,
+    project_id: DEFAULT_PROJECT_ID,
     name: "KYC-2025-H2",
     tag: "AML",
     state: "archived" as const,
@@ -71,7 +97,7 @@ const SEED_SCOPES = [
 const SEED_AGENTS = [
   {
     id: "int-extractor-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Extractor",
     role: "extractor" as const,
     kind: "internal" as const,
@@ -79,7 +105,7 @@ const SEED_AGENTS = [
   },
   {
     id: "int-comparator-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Comparator",
     role: "comparator" as const,
     kind: "internal" as const,
@@ -87,7 +113,7 @@ const SEED_AGENTS = [
   },
   {
     id: "int-arbiter-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Arbiter",
     role: "arbiter" as const,
     kind: "internal" as const,
@@ -95,7 +121,7 @@ const SEED_AGENTS = [
   },
   {
     id: "int-proposer-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Proposer",
     role: "proposer" as const,
     kind: "internal" as const,
@@ -103,7 +129,7 @@ const SEED_AGENTS = [
   },
   {
     id: "int-reviewer-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Reviewer",
     role: "reviewer" as const,
     kind: "internal" as const,
@@ -111,7 +137,7 @@ const SEED_AGENTS = [
   },
   {
     id: "int-status-01",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     name: "Status Monitor",
     role: "status" as const,
     kind: "internal" as const,
@@ -124,7 +150,7 @@ const SEED_AGENTS = [
 const SEED_FINALITY = [
   {
     scope_id: "deal-horizon",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     score: 0.78,
     per_dimension: {
       claim_confidence: 0.82,
@@ -140,7 +166,7 @@ const SEED_FINALITY = [
   },
   {
     scope_id: "green-bond-2026",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     score: 0.64,
     per_dimension: {
       claim_confidence: 0.71,
@@ -156,7 +182,7 @@ const SEED_FINALITY = [
   },
   {
     scope_id: "solvency-ii-q1",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     score: 0.94,
     per_dimension: {
       claim_confidence: 0.96,
@@ -172,7 +198,7 @@ const SEED_FINALITY = [
   },
   {
     scope_id: "kyc-2025-h2",
-    tenant_id: TENANT,
+    tenant_id: ORG,
     score: 0.91,
     per_dimension: {
       claim_confidence: 0.93,
@@ -193,6 +219,8 @@ const SEED_FINALITY = [
 async function runSeedBody(db: Db): Promise<void> {
   console.log("[sgrs][seed] Upserting deal-ex-machina demo scenario…");
 
+  await seedOrgAndProject(db);
+
   for (const row of SEED_SCOPES) {
     await db
       .insert(scopes)
@@ -201,6 +229,7 @@ async function runSeedBody(db: Db): Promise<void> {
         target: scopes.id,
         set: {
           tenant_id: row.tenant_id,
+          project_id: row.project_id,
           name: row.name,
           tag: row.tag,
           state: row.state,

@@ -88,6 +88,7 @@ export function useFinality(
   scopeId: string | null,
   tenantId: string,
   pollIntervalMs = 5_000,
+  projectId?: string,
 ): UseFinalityResult {
   const [state, dispatch] = useReducer(reducer, {
     status: null,
@@ -96,7 +97,10 @@ export function useFinality(
   });
 
   // Memoized so the client is not re-created on every render.
-  const api = useMemo(() => createClient({ tenantId }), [tenantId]);
+  const api = useMemo(
+    () => createClient({ tenantId, projectId }),
+    [tenantId, projectId],
+  );
 
   // Use a ref for the timer so the effect cleanup doesn't need it in its deps.
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);

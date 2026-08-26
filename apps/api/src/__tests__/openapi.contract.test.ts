@@ -39,21 +39,6 @@ describe("OpenAPI canonical contract", () => {
       "/admin/runtime/resume",
       "/admin/runtime/stop",
       "/admin/runtime/restart",
-      "/internals/health",
-      "/internals/hatchery/snapshot",
-      "/internals/events",
-      "/internals/convergence",
-      "/internals/control-plane/health",
-      "/internals/kernel/health",
-      "/internals/kernel/hatchery/snapshot",
-      "/internals/kernel/events",
-      "/internals/kernel/convergence",
-      "/internals/kernel/control-plane/health",
-      "/internals/kernel/runtime/start",
-      "/internals/kernel/runtime/pause",
-      "/internals/kernel/runtime/resume",
-      "/internals/kernel/runtime/stop",
-      "/internals/kernel/runtime/restart",
     ];
     for (const p of requiredPaths) {
       expect(paths[p], `missing OpenAPI path: ${p}`).toBeDefined();

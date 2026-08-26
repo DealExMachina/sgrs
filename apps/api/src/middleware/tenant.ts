@@ -24,6 +24,12 @@ export const tenantMiddleware: MiddlewareHandler = async (
   c: Context,
   next: Next
 ) => {
+  const preset = c.get("tenantId");
+  if (preset) {
+    await next();
+    return;
+  }
+
   const raw = c.req.header("x-tenant-id") ?? c.req.header("X-Tenant-ID") ?? "";
 
   if (!raw.trim()) {
