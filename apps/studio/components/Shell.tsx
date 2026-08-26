@@ -3,17 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@sgrs/ui";
 import type { Mode, ScopeItem } from "@/lib/types";
-import { DEFAULT_TENANT_ID } from "@/lib/types";
+import { useOrgId, useProjectId } from "@/lib/hooks/useTenantId";
 import { useScopes } from "@/lib/hooks/useScopes";
 import { useFinality } from "@/lib/hooks/useFinality";
 import { useEventStream } from "@/lib/hooks/useEventStream";
 import { useDomainData } from "@/lib/hooks/useDomainData";
 import type { SgrsEvent } from "@sgrs/client-ts";
 import { ScopeSelector } from "./ScopeSelector";
+import { ProjectSelector } from "./ProjectSelector";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { BusinessMode } from "./modes/BusinessMode";
 import { ConfigureMode } from "./modes/ConfigureMode";
-import { DebugMode } from "./modes/DebugMode";
+import { UserMenu } from "./UserMenu";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ const MAX_ACTIVITY = 20;
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export function Shell() {
+  const orgId = useOrgId();
+  const { projectId, projects, setProjectId } = useProjectId(orgId);
   const [mode, setMode] = useState<Mode>("business");
   const [scopeId, setScopeId] = useState<string | null>(null);
   const [vetoAlert, setVetoAlert] = useState<VetoInfo | null>(null);
@@ -39,7 +42,7 @@ export function Shell() {
 
   // ── Data hooks ─────────────────────────────────────────────────────────────
 
-  const { scopes, isLoading, applyEvent: applyScopeEvent } = useScopes(DEFAULT_TENANT_ID);
+  const { scopes, isLoading, applyEvent: applyScopeEvent } = useScopes(orgId, projectId);
 
   // Lifted from DebugMode so the SSE layer can push finality events here.
   // Polls every 30 s as a background resync; SSE provides instant updates.
@@ -47,14 +50,9 @@ export function Shell() {
     status: finalityStatus,
     isLoading: finalityLoading,
     applyEvent: applyFinalityEvent,
-  } = useFinality(
-    scopeId,               // null-safe: hook skips fetching when null
-    DEFAULT_TENANT_ID,
-    30_000,                // 30 s poll — SSE handles sub-second updates
-  );
+  } = useFinality(scopeId, orgId, 30_000, projectId);
 
-  // All governance domain data (claims, drifts, contradictions, risks, docs, epochs)
-  const domain = useDomainData(scopeId, DEFAULT_TENANT_ID);
+  const domain = useDomainData(scopeId, orgId, projectId);
 
   // ── SSE connection — single stream per tab ─────────────────────────────────
 
@@ -64,7 +62,7 @@ export function Shell() {
     setActivityEvents((prev) => [event, ...prev].slice(0, MAX_ACTIVITY));
   }, []);
 
-  const { connected: streamConnected } = useEventStream(DEFAULT_TENANT_ID, {
+  const { connected: streamConnected } = useEventStream(orgId, {
     onScopeEvent: applyScopeEvent,
     onFinalityEvent: applyFinalityEvent,
     onClaimEvent: domain.applyClaimEvent,
@@ -120,11 +118,17 @@ export function Shell() {
       )}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-5 border-b border-graphite px-5">
+      <header className="grid grid-cols-[auto_auto_auto_1fr_auto] items-center gap-4 border-b border-graphite px-5">
         <div className="flex items-center gap-2.5 text-[14px] font-semibold tracking-[0.1px]">
           <div className="h-5 w-5 rounded-[5px] bg-gradient-to-br from-orange to-amber" />
           SGRS Studio
         </div>
+
+        <ProjectSelector
+          projects={projects}
+          activeId={projectId}
+          onSelect={setProjectId}
+        />
 
         {scope !== null && scopeId !== null ? (
           <ScopeSelector
@@ -149,9 +153,7 @@ export function Shell() {
               streamConnected ? "bg-ok" : "bg-fog",
             )}
           />
-          <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-blue-deep to-blue text-[11px] font-semibold text-ink">
-            JB
-          </div>
+          <UserMenu tenantId={orgId} />
         </div>
       </header>
 
@@ -173,13 +175,6 @@ export function Shell() {
         )}
         {scope !== null && mode === "configure" && (
           <ConfigureMode scope={scope} />
-        )}
-        {scope !== null && mode === "debug" && (
-          <DebugMode
-            scope={scope}
-            finalityStatus={finalityStatus}
-            finalityLoading={finalityLoading}
-          />
         )}
         {scope === null && (
           <div className="flex h-full items-center justify-center text-[13px] text-fog">

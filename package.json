@@ -14,7 +14,6 @@
     "docs:py": "bash scripts/docs-py.sh",
     "setup": "bash scripts/setup-local.sh",
     "setup:github": "bash scripts/github-repo-setup.sh",
-    "align:open-swarm": "bash scripts/align-open-swarm-kernel-version.sh",
     "test:py": "cd packages/client-py && uv sync --locked --extra dev --extra test && uv run pytest --ignore=tests/test_performance.py",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,json,md,yml,yaml}\" --ignore-path .gitignore",

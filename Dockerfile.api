@@ -1,0 +1,47 @@
+# SGRS product API — multi-stage Docker image
+#
+#   docker build -f Dockerfile.api -t sgrs-api .
+#   docker run --rm -p 3003:3003 --env-file .env.local sgrs-api
+
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY apps/api ./apps/api
+COPY packages ./packages
+
+RUN pnpm install --frozen-lockfile \
+  && pnpm turbo run build --filter=@sgrs/api...
+
+FROM node:24-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3003
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/db/package.json ./packages/db/
+COPY packages/api-schema/package.json ./packages/api-schema/
+COPY packages/client-ts/package.json ./packages/client-ts/
+
+RUN pnpm install --frozen-lockfile --prod --filter @sgrs/api...
+
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
+COPY --from=builder /app/packages/db/drizzle ./packages/db/drizzle
+COPY --from=builder /app/packages/api-schema/dist ./packages/api-schema/dist
+COPY --from=builder /app/packages/client-ts/dist ./packages/client-ts/dist
+
+EXPOSE 3003
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
+
+CMD ["node", "apps/api/dist/index.js"]

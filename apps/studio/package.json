@@ -17,6 +17,7 @@
     "@sgrs/client-ts": "workspace:*",
     "@sgrs/graph": "workspace:*",
     "@sgrs/ui": "workspace:*",
+    "@clerk/nextjs": "^6.22.0",
     "nats": "2.29.3",
     "next": "16.2.11",
     "react": "19.2.5",

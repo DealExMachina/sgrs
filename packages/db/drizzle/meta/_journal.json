@@ -22,6 +22,20 @@
       "when": 1777507200000,
       "tag": "0002_governance_provenance",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777593600000,
+      "tag": "0003_auth_api_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777680000000,
+      "tag": "0004_org_projects_iam",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-export type Mode = "business" | "configure" | "debug";
+export type Mode = "business" | "configure";
 
 /**
  * Re-export the canonical scope type from the API schema so Studio components

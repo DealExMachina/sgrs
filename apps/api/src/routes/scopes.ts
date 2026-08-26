@@ -63,20 +63,27 @@ function publish(
 export function createScopesRouter(db: Db, analytics: AnalyticsDb, eventsApi?: EventsApi) {
   const router = new Hono();
 
-  /** GET /api/scopes — list all scopes for tenant */
+  /** GET /api/scopes — list scopes for active project */
   router.get("/", async (c) => {
     const tenantId = c.get("tenantId");
+    const projectId = c.get("projectId");
     const rows = await db
       .select()
       .from(scopesTable)
-      .where(eq(scopesTable.tenant_id, tenantId));
+      .where(
+        and(
+          eq(scopesTable.tenant_id, tenantId),
+          eq(scopesTable.project_id, projectId),
+        ),
+      );
 
     return c.json(rows.map(toApiScope));
   });
 
-  /** POST /api/scopes — create scope */
+  /** POST /api/scopes — create scope in active project */
   router.post("/", zValidator("json", CreateScopeBody), async (c) => {
     const tenantId = c.get("tenantId");
+    const projectId = c.get("projectId");
     const body = c.req.valid("json");
 
     const now = new Date();
@@ -85,6 +92,7 @@ export function createScopesRouter(db: Db, analytics: AnalyticsDb, eventsApi?: E
       .values({
         ...body,
         tenant_id: tenantId,
+        project_id: projectId,
         created_at: now,
         updated_at: now,
       })

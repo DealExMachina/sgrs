@@ -17,7 +17,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb, closeDb, runMigrations, AnalyticsDb } from "@sgrs/db";
+import { createDb, closeDb, runMigrations, AnalyticsDb, organizations, projects } from "@sgrs/db";
 import { createApp } from "../app.js";
 import type { AppConfig } from "../app.js";
 
@@ -39,6 +39,13 @@ async function makeApp(opts?: { apiKey?: string }) {
 
   // Step 2: open the same database for the app
   const db = createDb(dbDir);
+  await db.insert(organizations).values({ id: "acme", name: "Acme Test" }).onConflictDoNothing();
+  await db.insert(projects).values({
+    id: "acme-default",
+    org_id: "acme",
+    name: "Default",
+    slug: "default",
+  }).onConflictDoNothing();
   const analytics = await AnalyticsDb.create(":memory:");
 
   const config: AppConfig = { db, analytics };
@@ -74,12 +81,14 @@ function req(
   opts?: {
     body?: unknown;
     tenant?: string;
+    project?: string;
     bearer?: string;
   },
 ): Request {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "application/json",
+    "X-Project-ID": opts?.project ?? "acme-default",
   };
   if (opts?.tenant) headers["X-Tenant-ID"] = opts.tenant;
   if (opts?.bearer) headers["Authorization"] = `Bearer ${opts.bearer}`;

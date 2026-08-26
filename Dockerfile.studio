@@ -1,0 +1,53 @@
+# SGRS Studio — multi-stage Docker image
+#
+#   docker build -f Dockerfile.studio \
+#     --build-arg NEXT_PUBLIC_BACKEND_API_URL=https://api.example.com \
+#     --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_… \
+#     -t sgrs-studio .
+#   docker run --rm -p 3001:3001 -e CLERK_SECRET_KEY=sk_live_… sgrs-studio
+
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+ARG NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3003
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ARG NEXT_PUBLIC_TENANT_ID=deal-ex-machina
+
+ENV NEXT_PUBLIC_BACKEND_API_URL=$NEXT_PUBLIC_BACKEND_API_URL
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_TENANT_ID=$NEXT_PUBLIC_TENANT_ID
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY apps/studio ./apps/studio
+COPY packages ./packages
+
+RUN pnpm install --frozen-lockfile \
+  && pnpm turbo run build --filter=@sgrs/studio...
+
+FROM node:24-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOSTNAME=0.0.0.0
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/studio/package.json ./apps/studio/
+COPY --from=builder /app/apps/studio/.next/standalone ./
+COPY --from=builder /app/apps/studio/.next/static ./apps/studio/.next/static
+COPY --from=builder /app/apps/studio/public ./apps/studio/public
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:${PORT}/api/health || exit 1
+
+CMD ["node", "apps/studio/server.js"]

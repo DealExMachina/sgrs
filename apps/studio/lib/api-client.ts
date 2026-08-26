@@ -41,8 +41,10 @@ type ApiIngestDocumentRequest = z.infer<typeof IngestDocumentRequest>;
 type ApiIngestDocumentResponse = z.infer<typeof IngestDocumentResponse>;
 
 export interface ApiClientConfig {
-  /** Tenant ID sent as X-Tenant-ID header on every request. */
+  /** Organization id sent as X-Tenant-ID header on every request. */
   tenantId: string;
+  /** Active project id sent as X-Project-ID on governance routes. */
+  projectId?: string;
   /** Base URL for API requests (typically Studio origin :3001 so traffic uses the proxy). */
   baseUrl?: string;
   /** Bearer token for auth. Defaults to NEXT_PUBLIC_API_KEY env var if set. */
@@ -79,6 +81,7 @@ export function createClient(config: ApiClientConfig) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-Tenant-ID": config.tenantId,
+      ...(config.projectId ? { "X-Project-ID": config.projectId } : {}),
       ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       ...(init?.headers as Record<string, string> | undefined),
     };

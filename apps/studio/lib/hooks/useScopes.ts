@@ -97,7 +97,7 @@ export interface UseScopesResult {
   applyEvent: (event: SgrsEvent) => void;
 }
 
-export function useScopes(tenantId: string): UseScopesResult {
+export function useScopes(tenantId: string, projectId?: string): UseScopesResult {
   const [state, dispatch] = useReducer(reducer, {
     scopes: [],
     isLoading: false,
@@ -105,7 +105,10 @@ export function useScopes(tenantId: string): UseScopesResult {
   });
 
   // Memoized so the client is not re-created on every render.
-  const api = useMemo(() => createClient({ tenantId }), [tenantId]);
+  const api = useMemo(
+    () => createClient({ tenantId, projectId }),
+    [tenantId, projectId],
+  );
 
   const fetchScopes = useCallback(async () => {
     dispatch({ type: "FETCH_START" });

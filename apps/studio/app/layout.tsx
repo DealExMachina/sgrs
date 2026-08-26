@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,9 +26,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  const body = (
     <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body className="relative z-0">{children}</body>
     </html>
   );
+
+  if (publishableKey) {
+    return <ClerkProvider publishableKey={publishableKey}>{body}</ClerkProvider>;
+  }
+
+  return body;
 }
